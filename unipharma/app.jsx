@@ -216,7 +216,7 @@ function App() {
         {page === 'comparison' && <ComparisonPage {...sharedProps} />}
         {page === 'stock' && <StockPage {...sharedProps} />}
         {page === 'reports' && <ReportsPage {...sharedProps} />}
-        {page === 'help' && <HelpPage lang={lang} L={L} />}
+        {page === 'help' && <HelpPage lang={lang} L={L} perm={perm} />}
         {page === 'sync' && <DataSyncPage lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} suppliers={suppliers} setSuppliers={setSuppliers} notify={notify} perm={perm} />}
       </div>
 

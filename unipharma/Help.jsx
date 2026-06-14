@@ -1,17 +1,21 @@
 // Help.jsx — Dynamic User Guide (Update-friendly structure)
 const { useState } = React;
 
-function HelpPage({ lang, L }) {
+function HelpPage({ lang, L, perm = { role: 'admin' } }) {
   const [section, setSection] = useState('overview');
+  const isAdmin = perm.role === 'admin';
 
-  // 🎯 EDIT HERE: Add/remove sections
-  const SECTIONS = [
+  // 🎯 EDIT HERE: Add/remove sections. adminOnly tabs show only to Admin (when Login is on).
+  const ALL_SECTIONS = [
     { id:'overview',  icon:'📋', th:'ภาพรวมระบบ',         en:'System Overview' },
     { id:'pages',     icon:'🖥',  th:'วิธีใช้แต่ละหน้า',    en:'How to Use Each Page' },
-    { id:'data',      icon:'📦', th:'ข้อมูลที่ต้องเตรียม',   en:'Required Data' },
-    { id:'sync',      icon:'🔄', th:'ซิงค์ข้อมูล',          en:'Data Sync' },
-    { id:'nextsteps', icon:'🚀', th:'ขั้นตอนถัดไป',         en:'Next Steps' },
+    { id:'data',      icon:'📦', th:'ข้อมูลที่ต้องเตรียม',   en:'Required Data',  adminOnly:true },
+    { id:'sync',      icon:'🔄', th:'ซิงค์ข้อมูล',          en:'Data Sync',       adminOnly:true },
+    { id:'nextsteps', icon:'🚀', th:'ขั้นตอนถัดไป',         en:'Next Steps',      adminOnly:true },
   ];
+  const SECTIONS = ALL_SECTIONS.filter(s => !s.adminOnly || isAdmin);
+  // If the saved section is admin-only and the user isn't admin, fall back to overview.
+  const sec = SECTIONS.some(s => s.id === section) ? section : 'overview';
 
   // 🎯 EDIT HERE: Add new pages to the guide
   const PAGES = [
@@ -89,14 +93,14 @@ function HelpPage({ lang, L }) {
 
       <div className="tabs" style={{marginBottom:20}}>
         {SECTIONS.map(s => (
-          <button key={s.id} className={`tab-btn${section===s.id?' active':''}`} onClick={()=>setSection(s.id)}>
+          <button key={s.id} className={`tab-btn${sec===s.id?' active':''}`} onClick={()=>setSection(s.id)}>
             {s.icon} {lang==='th'?s.th:s.en}
           </button>
         ))}
       </div>
 
       {/* OVERVIEW */}
-      {section==='overview' && (
+      {sec==='overview' && (
         <div>
           <Card title={L('ระบบนี้ใช้ได้เลยตอนนี้ — ข้อมูลตัวอย่างพร้อม', 'This system is ready to use now — sample data included')}>
             <div style={{fontSize:13,color:'var(--txt3)',lineHeight:1.8,marginBottom:12}}>
@@ -123,7 +127,7 @@ function HelpPage({ lang, L }) {
       )}
 
       {/* PAGES */}
-      {section==='pages' && (
+      {sec==='pages' && (
         <div>
           {PAGES.map(page => (
             <Card key={page.en} title={`${page.icon} ${lang==='th'?page.th:page.en}`}>
@@ -134,7 +138,7 @@ function HelpPage({ lang, L }) {
       )}
 
       {/* DATA */}
-      {section==='data' && (
+      {sec==='data' && (
         <div>
           {REQUIRED_DATA.map(data => (
             <Card key={data.en} title={lang==='th'?data.th:data.en}>
@@ -165,7 +169,7 @@ function HelpPage({ lang, L }) {
       )}
 
       {/* SYNC */}
-      {section==='sync' && (
+      {sec==='sync' && (
         <div>
           <Card title={L('ตัวเลือก 1: Google Sheets (แนะนำ)','Option 1: Google Sheets (Recommended)')}>
             <Step n={1} th="สร้าง Google Sheet" en="Create Google Sheet" />
@@ -184,7 +188,7 @@ function HelpPage({ lang, L }) {
       )}
 
       {/* NEXT STEPS */}
-      {section==='nextsteps' && (
+      {sec==='nextsteps' && (
         <div className="card" style={{padding:0}}>
           <div style={{padding:'14px 16px',borderBottom:'1px solid var(--border)',fontWeight:700}}>
             {L('ทำตามลำดับเพื่อให้ระบบสมบูรณ์','Complete in this order')}
