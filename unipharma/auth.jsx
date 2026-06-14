@@ -3,7 +3,7 @@
 // Supabase email/password provider works without anyone typing an email.
 // Clean light design, independent of the app's dark/light theme.
 const LOGIN_DOMAIN = 'unipharma.local';
-function LoginScreen({ L, onSignedIn }) {
+function LoginScreen({ L, lang, setLang, onSignedIn }) {
   const { useState } = React;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -35,11 +35,14 @@ function LoginScreen({ L, onSignedIn }) {
           padding:40px 36px;box-shadow:0 24px 64px rgba(17,119,204,.20),0 2px 8px rgba(17,119,204,.08);
           animation:lg-in .55s cubic-bezier(.2,.85,.25,1)}
         @keyframes lg-in{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
-        .lg-logo{width:72px;height:72px;margin:0 auto 14px;border-radius:18px;background:#fff;
+        .lg-logo{width:104px;height:104px;margin:0 auto 16px;border-radius:24px;background:#fff;
           box-shadow:0 8px 24px rgba(17,119,204,.18);display:flex;align-items:center;justify-content:center;
           animation:lg-pop .6s .1s both cubic-bezier(.2,1.4,.4,1)}
         @keyframes lg-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
-        .lg-logo img{width:50px;height:50px;object-fit:contain}
+        .lg-logo img{width:74px;height:74px;object-fit:contain}
+        .lg-lang{position:absolute;top:14px;right:14px;padding:4px 12px;border:1.5px solid #e1ebf5;border-radius:20px;
+          background:#f6fafe;color:#1177cc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;z-index:2}
+        .lg-lang:hover{background:#eaf3fc;border-color:#1177cc}
         .lg-brand{text-align:center;font-size:22px;font-weight:800;letter-spacing:.5px;
           background:linear-gradient(120deg,#1177cc,#06b6d4);-webkit-background-clip:text;background-clip:text;color:transparent}
         .lg-sub{text-align:center;font-size:12.5px;color:#7794ad;margin-top:2px;margin-bottom:26px}
@@ -67,6 +70,11 @@ function LoginScreen({ L, onSignedIn }) {
       <div className="lg-blob lg-b3"></div>
 
       <form onSubmit={submit} className="lg-card">
+        {setLang && (
+          <button type="button" className="lg-lang" onClick={() => setLang(l => l === 'th' ? 'en' : 'th')}>
+            {lang === 'th' ? 'EN' : 'ไทย'}
+          </button>
+        )}
         <div className="lg-logo"><img src="assets/logo.png" alt="Unipharma" /></div>
         <div className="lg-brand">UNIPHARMA</div>
         <div className="lg-sub">{L('ระบบจัดการการสั่งซื้อ', 'Purchasing Management')}</div>

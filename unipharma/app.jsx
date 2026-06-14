@@ -142,7 +142,7 @@ function App() {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt3)', background: 'var(--bg0)' }}>{L('กำลังโหลด…', 'Loading…')}</div>;
   }
   if (authOn && !session) {
-    return <LoginScreen L={L} onSignedIn={async () => { const s = await window.UNI_DB.getSession(); setSession(s); setMe(await window.UNI_DB.getMyRole()); }} />;
+    return <LoginScreen L={L} lang={lang} setLang={setLang} onSignedIn={async () => { const s = await window.UNI_DB.getSession(); setSession(s); setMe(await window.UNI_DB.getMyRole()); }} />;
   }
 
   return (
