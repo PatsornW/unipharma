@@ -136,7 +136,11 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{
+      ...styles.container,
+      background: tab === 'report' ? 'var(--bg0)' : 'var(--bg0)',
+      transition: 'background 0.3s ease'
+    }}>
       {/* Tabs */}
       <div style={styles.tabsContainer}>
         <button style={styles.tab(tab === 'report')} onClick={() => setTab('report')}>
