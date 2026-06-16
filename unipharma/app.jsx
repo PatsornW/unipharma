@@ -223,7 +223,7 @@ function App() {
       {/* CREATE PO MODAL */}
       {showCreate && perm.canWrite && (
         <CreatePOModal {...sharedProps} onClose={() => setShowCreate(false)}
-          onCreated={po => { setOrders(prev => [po, ...prev]); setShowCreate(false); setViewPO(po); if (window.UNI_DB) window.UNI_DB.savePO(po); notify(L('สร้างใบสั่งซื้อสำเร็จ', 'PO created successfully')); }} />
+          onCreated={(po, items) => { setOrders(prev => [po, ...prev]); setShowCreate(false); setViewPO(po); if (window.UNI_DB) window.UNI_DB.savePOWithUnits(po, items, drugs); notify(L('สร้างใบสั่งซื้อสำเร็จ', 'PO created successfully')); }} />
       )}
 
       {/* PO DOCUMENT VIEWER */}

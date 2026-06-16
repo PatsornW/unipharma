@@ -143,7 +143,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, orders, onClose, onCreated, 
       createdBy: createdBy || L('ผู้ใช้งาน', 'User'),
       approvedBy: status === 'approved' ? L('ผู้จัดการจัดซื้อ', 'Purchasing Manager') : '-'
     };
-    onCreated(newPO);
+    onCreated(newPO, items);
   };
 
   const branchInfo = DB.BRANCHES.find(b => b.id === branch);

@@ -120,6 +120,19 @@
       try { await client.from("purchase_orders").upsert(poRow(p)); }
       catch (e) { console.warn("[UNI_DB] savePO:", e); }
     },
+    async savePOWithUnits(p, items, drugs) {
+      if (!enabled) return;
+      try {
+        await client.from("purchase_orders").upsert(poRow(p));
+        for (const item of items) {
+          const drug = drugs.find(d => d.code === item.code);
+          if (drug && drug.unit !== item.unit) {
+            await client.from("drugs").upsert(drugRow({ ...drug, unit: item.unit }));
+          }
+        }
+      }
+      catch (e) { console.warn("[UNI_DB] savePOWithUnits:", e); }
+    },
     async deleteDrug(code) {
       if (!enabled) return;
       try { await client.from("drugs").delete().eq("code", code); }
