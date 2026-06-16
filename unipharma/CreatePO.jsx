@@ -62,7 +62,12 @@ function CreatePOModal({ lang, L, drugs, suppliers, orders, onClose, onCreated, 
   };
 
   const updateItem = (code, field, val) => {
-    setItems(prev => prev.map(i => i.code === code ? { ...i, [field]: field === 'unitMode' ? val : (field === 'unit' ? val : (parseFloat(val) || 0)) } : i));
+    setItems(prev => prev.map(i => {
+      if (i.code !== code) return i;
+      if (field === 'unitMode' || field === 'unit') return { ...i, [field]: val };
+      if (field === 'vatRate') return { ...i, [field]: parseInt(val) };
+      return { ...i, [field]: val === '' ? 0 : parseFloat(val) };
+    }));
   };
 
   const removeItem = code => setItems(prev => prev.filter(i => i.code !== code));
@@ -308,8 +313,11 @@ function CreatePOModal({ lang, L, drugs, suppliers, orders, onClose, onCreated, 
                       <td>
                         <input className="input input-sm" type="number" min="0" max="100" value={it.discount} style={{ width: 70, textAlign: 'right' }} onChange={e => updateItem(it.code, 'discount', e.target.value)} />
                       </td>
-                      <td style={{ textAlign: 'right', fontSize: 12, color: it.vatRate > 0 ? 'var(--info)' : 'var(--txt4)' }}>
-                        {it.vatRate > 0 ? '7%' : '-'}
+                      <td>
+                        <select className="input input-sm" value={String(it.vatRate)} onChange={e => updateItem(it.code, 'vatRate', e.target.value)} style={{ width: 100 }}>
+                          <option value="0">ไม่มี VAT</option>
+                          <option value="7">VAT 7%</option>
+                        </select>
                       </td>
                       <td className="tbl-num" style={{ fontWeight: 700 }}>
                         ฿{UTILS.fmt(calcLine(it))}
