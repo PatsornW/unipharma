@@ -171,7 +171,7 @@
     // ---- Authentication ----
     async getSession() {
       if (!enabled) return null;
-      try { const { data } = await client.auth.getSession(); return data.session || null; }
+      try { const { data } = await client.auth.getSession(); return (data.session && data.session.user) ? data.session : null; }
       catch (e) { return null; }
     },
     async signIn(email, password) {
