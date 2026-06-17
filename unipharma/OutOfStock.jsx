@@ -113,32 +113,32 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
 
   const styles = {
     container: { padding: '1.5rem', maxWidth: '900px', margin: '0 auto' },
-    tabsContainer: { display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '0.5px solid #ddd', paddingBottom: '1rem' },
+    tabsContainer: { display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' },
     tab: (active) => ({
       background: 'none',
       border: 'none',
       padding: '0.5rem 1rem',
       fontSize: '14px',
       fontWeight: active ? '500' : '400',
-      color: active ? '#0055cc' : '#666',
-      borderBottom: active ? '2px solid #0055cc' : 'none',
+      color: active ? 'var(--acc2)' : 'var(--txt3)',
+      borderBottom: active ? '2px solid var(--acc)' : 'none',
       cursor: 'pointer'
     }),
-    card: { background: '#fff', border: '0.5px solid #ddd', borderRadius: '8px', padding: '1.25rem', marginBottom: '1rem' },
-    header: { fontSize: '18px', fontWeight: '500', marginBottom: '1rem' },
-    label: { display: 'block', fontSize: '13px', color: '#666', marginBottom: '6px', fontWeight: '500' },
-    input: { width: '100%', padding: '8px 12px', border: '0.5px solid #ddd', borderRadius: '6px', fontSize: '14px', marginBottom: '1rem', fontFamily: 'inherit' },
-    button: { background: '#0055cc', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', fontSize: '14px' },
-    reportItem: { background: '#f9f9f9', border: '0.5px solid #ddd', borderRadius: '6px', padding: '1rem', marginBottom: '12px', display: 'flex', gap: '1rem' },
-    thumbnail: { width: '60px', height: '60px', background: '#e8e8e8', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 },
+    card: { background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1.25rem', marginBottom: '1rem' },
+    header: { fontSize: '18px', fontWeight: '500', marginBottom: '1rem', color: 'var(--txt2)' },
+    label: { display: 'block', fontSize: '13px', color: 'var(--txt3)', marginBottom: '6px', fontWeight: '500' },
+    input: { width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '14px', marginBottom: '1rem', fontFamily: 'inherit', background: 'var(--bg1)', color: 'var(--txt)' },
+    button: { background: 'var(--acc)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', fontSize: '14px' },
+    reportItem: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '6px', padding: '1rem', marginBottom: '12px', display: 'flex', gap: '1rem' },
+    thumbnail: { width: '60px', height: '60px', background: 'var(--bg4)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 },
     periodHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' },
-    topicBox: { background: '#f0f7ff', border: '0.5px solid #b3d9ff', borderRadius: '8px', padding: '1.25rem', marginBottom: '1.5rem' }
+    topicBox: { background: 'var(--glow)', border: '1px solid var(--border2)', borderRadius: '8px', padding: '1.25rem', marginBottom: '1.5rem' }
   };
 
   return (
     <div style={{
       ...styles.container,
-      background: tab === 'report' ? 'var(--bg0)' : 'var(--bg0)',
+      background: 'var(--bg0)',
       transition: 'background 0.3s ease'
     }}>
       {/* Tabs */}
@@ -160,21 +160,21 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
           <div style={styles.topicBox}>
             <div style={styles.periodHeader}>
               <div>
-                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '500' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '500', color: 'var(--txt2)' }}>
                   📍 {L('สินค้าหมด', 'Out of stock')}
                 </h3>
-                <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#666' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--txt3)' }}>
                   {L('ช่วง', 'Period')}: {currentPeriod?.start} - {currentPeriod?.end} (7 {L('วัน', 'days')})
                 </p>
               </div>
-              <div style={{ textAlign: 'right', fontSize: '12px', color: '#666' }}>
+              <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--txt3)' }}>
                 <div>{reports.length} {L('รายการ', 'items')}</div>
-                <div style={{ color: '#999', marginTop: '4px' }}>{L('รีเซ็ตในอีก', 'Reset in')} {currentPeriod?.daysLeft} {L('วัน', 'days')}</div>
+                <div style={{ color: 'var(--txt4)', marginTop: '4px' }}>{L('รีเซ็ตในอีก', 'Reset in')} {currentPeriod?.daysLeft} {L('วัน', 'days')}</div>
               </div>
             </div>
-            <p style={{ margin: '0', fontSize: '14px', lineHeight: '1.6', color: '#333' }}>
+            <p style={{ margin: '0', fontSize: '14px', lineHeight: '1.6', color: 'var(--txt)' }}>
               <strong>{L('ถ้าพบรายการยาที่หมดระหว่างการขายในช่วงนี้ รบกวนช่วยแนบรูปหรือพิมพ์ชื่อยาลงในโพสนี้ ขอบคุณครับ/ค่ะ', 'If you found any item out of stock during this period, please help to attach the photo or name of items in this post. Thank you!')}</strong><br/>
-              <span style={{ color: '#666', display: 'block', marginTop: '8px' }}>🙏</span>
+              <span style={{ color: 'var(--txt3)', display: 'block', marginTop: '8px' }}>🙏</span>
             </p>
           </div>
 
@@ -208,30 +208,31 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: '#fff',
-                  border: '0.5px solid #ddd',
+                  background: 'var(--bg1)',
+                  border: '1px solid var(--border)',
                   borderTop: 'none',
                   borderRadius: '0 0 6px 6px',
                   maxHeight: '200px',
                   overflowY: 'auto',
                   zIndex: 10,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                 }}>
                   {suggestions.map(drug => (
                     <div
                       key={drug.code}
                       style={{
                         padding: '12px',
-                        borderBottom: '0.5px solid #eee',
+                        borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
-                        fontSize: '13px'
+                        fontSize: '13px',
+                        color: 'var(--txt)'
                       }}
                       onClick={() => selectProduct(drug)}
-                      onMouseOver={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                      onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'var(--bg1)'}
                     >
                       <div style={{ fontWeight: 500 }}>{drug.code} - {drug.nameTH || drug.nameEN}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{drug.nameEN}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--txt3)' }}>{drug.nameEN}</div>
                     </div>
                   ))}
                 </div>
@@ -240,20 +241,20 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
 
             <label style={styles.label}>{L('รูปภาพสินค้า', 'Product image')} *</label>
             <div style={{
-              border: '2px dashed #bbb',
+              border: '2px dashed var(--border2)',
               borderRadius: '6px',
               padding: '2rem',
               textAlign: 'center',
               cursor: 'pointer',
               marginBottom: '1rem',
-              background: imagePreview ? 'transparent' : '#fafafa'
+              background: imagePreview ? 'transparent' : 'var(--bg3)'
             }} onClick={() => document.getElementById('imageInput').click()}>
               {imagePreview ? (
                 <img src={imagePreview} style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
               ) : (
                 <div>
                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>📷</div>
-                  <div style={{ fontSize: '13px', color: '#666' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--txt3)' }}>
                     {L('คลิกเพื่ออัปโหลดหรือลากรูปที่นี่', 'Click or drag image here')}
                   </div>
                 </div>
@@ -284,7 +285,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
           <div>
             <h4 style={{ ...styles.header, marginTop: '2rem' }}>📝 {L('รายการที่แจ้ง', 'Reported items')} ({reports.length})</h4>
             {reports.length === 0 ? (
-              <p style={{ color: '#999', textAlign: 'center', padding: '2rem' }}>
+              <p style={{ color: 'var(--txt4)', textAlign: 'center', padding: '2rem' }}>
                 {L('ยังไม่มีรายการที่แจ้ง', 'No items reported yet')}
               </p>
             ) : (
@@ -297,13 +298,13 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
                   )}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                      {r.productCode && <span style={{ color: '#0055cc', fontWeight: '600' }}>{r.productCode}</span>} {r.productName}
+                      {r.productCode && <span style={{ color: 'var(--acc2)', fontWeight: '600' }}>{r.productCode}</span>} {r.productName}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--txt3)' }}>
                       {L('แจ้งโดย', 'Reported by')}: {r.reportedBy} • {new Date(r.createdAt).toLocaleDateString('th-TH')} {r.timestamp}
                     </div>
                     {r.notes && (
-                      <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--txt4)', marginTop: '4px' }}>
                         {L('หมายเหตุ', 'Note')}: {r.notes}
                       </div>
                     )}
@@ -318,12 +319,12 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
       {/* DASHBOARD TAB - For Purchasing */}
       {tab === 'dashboard' && (
         <div>
-          <div style={{ ...styles.card, background: '#fff3cd', border: '0.5px solid #ffc107', marginBottom: '1.5rem' }}>
+          <div style={{ ...styles.card, background: 'rgba(255,193,7,.12)', border: '1px solid rgba(255,193,7,.35)', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <span style={{ fontSize: '20px' }}>🔔</span>
               <div>
-                <strong style={{ fontSize: '14px' }}>{reports.length} {L('รายการสินค้าหมด', 'items out of stock')}</strong>
-                <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                <strong style={{ fontSize: '14px', color: 'var(--txt)' }}>{reports.length} {L('รายการสินค้าหมด', 'items out of stock')}</strong>
+                <div style={{ fontSize: '13px', color: 'var(--txt3)', marginTop: '4px' }}>
                   {L('แจ้งสำหรับช่วง', 'Reported for period')} {currentPeriod?.start} - {currentPeriod?.end}
                 </div>
               </div>
@@ -333,7 +334,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
           <h4 style={{ ...styles.header, marginBottom: '1rem' }}>📋 {L('รายการที่ต้องสั่ง', 'Items to reorder')}</h4>
 
           {reports.length === 0 ? (
-            <p style={{ color: '#999', textAlign: 'center', padding: '2rem' }}>
+            <p style={{ color: 'var(--txt4)', textAlign: 'center', padding: '2rem' }}>
               {L('ไม่มีรายการที่หมดในช่วงนี้', 'No out of stock items this period')}
             </p>
           ) : (
@@ -342,13 +343,13 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
                 <div key={r.id} style={styles.card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
                     <div style={{ fontWeight: '500' }}>
-                      {idx + 1}. {r.productCode && <span style={{ color: '#0055cc' }}>[{r.productCode}]</span>} {r.productName}
+                      {idx + 1}. {r.productCode && <span style={{ color: 'var(--acc2)' }}>[{r.productCode}]</span>} {r.productName}
                     </div>
-                    <span style={{ fontSize: '12px', background: '#fff3cd', color: '#856404', padding: '4px 12px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '12px', background: 'rgba(255,193,7,.18)', color: 'var(--txt2)', border: '1px solid rgba(255,193,7,.35)', padding: '4px 12px', borderRadius: '4px' }}>
                       ⚠️ {L('หมด', 'Out')}
                     </span>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--txt3)', marginBottom: '12px' }}>
                     {L('แจ้งล่าสุด', 'Last reported')}: {new Date(r.createdAt).toLocaleDateString('th-TH')} •
                     {L('หมด stock ครั้งล่าสุด', 'Current stock')}: 0 {L('หน่วย', 'units')}
                   </div>
@@ -361,15 +362,15 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
           )}
 
           {/* Summary */}
-          <div style={{ ...styles.card, marginTop: '2rem', background: '#f0f7ff' }}>
-            <h5 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '500' }}>📊 {L('สรุปสถิติ', 'Summary')}</h5>
+          <div style={{ ...styles.card, marginTop: '2rem', background: 'var(--bg3)' }}>
+            <h5 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '500', color: 'var(--txt2)' }}>📊 {L('สรุปสถิติ', 'Summary')}</h5>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '13px' }}>
               <div>
-                <div style={{ color: '#666' }}>{L('รายการที่หมด', 'Items out')}</div>
-                <div style={{ fontSize: '18px', fontWeight: '500', color: '#0055cc' }}>{reports.length}</div>
+                <div style={{ color: 'var(--txt3)' }}>{L('รายการที่หมด', 'Items out')}</div>
+                <div style={{ fontSize: '18px', fontWeight: '500', color: 'var(--acc2)' }}>{reports.length}</div>
               </div>
               <div>
-                <div style={{ color: '#666' }}>{L('สั้นสูตรชิด', 'High priority')}</div>
+                <div style={{ color: 'var(--txt3)' }}>{L('สำคัญสูง', 'High priority')}</div>
                 <div style={{ fontSize: '18px', fontWeight: '500', color: '#ff6b6b' }}>
                   {reports.filter(r => !r.notes || r.notes.length < 50).length}
                 </div>
