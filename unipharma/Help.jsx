@@ -51,7 +51,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
     { th:'💊 ฐานข้อมูลยา', en:'💊 Drug Database',
       current_th:'83 ตัวอย่าง', current_en:'83 sample',
       needed_th:'10,258 รายการ', needed_en:'10,258 items',
-      fields:[['รหัสสินค้า','Code'],['ชื่อไทย','Name TH'],['ชื่ออังกฤษ','Name EN'],['หน่วย','Unit'],['หมวดหมู่','Category'],['VAT','Has VAT'],['ต้นทุน','Cost'],['ราคาขาย','Sell'],['สต็อก PTN/RAM/CNX','Stock'],['สต็อกขั้นต่ำ','Min Stock'],['ผู้จัดจำหน่าย','Supplier'],['หน่วยบรรจุ','Packaging (ใหม่)']] },
+      fields:[['รหัสสินค้า','Code'],['ชื่อไทย','Name TH'],['ชื่ออังกฤษ','Name EN'],['หน่วย','Unit'],['หมวดหมู่','Category'],['หมวดย่อย','Sub-category (ใหม่)'],['VAT','Has VAT'],['ต้นทุน','Cost'],['ราคาขาย','Sell'],['สต็อก PTN/RAM/CNX','Stock'],['สต็อกขั้นต่ำ','Min Stock'],['ผู้จัดจำหน่าย','Supplier'],['หน่วยบรรจุ','Packaging']] },
     { th:'🏭 ผู้จัดจำหน่าย', en:'🏭 Suppliers',
       current_th:'10 ราย', current_en:'10',
       needed_th:'410 ราย', needed_en:'410',

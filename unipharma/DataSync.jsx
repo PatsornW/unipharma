@@ -30,6 +30,7 @@ const DRUG_ALIASES = {
   nameEN:['nameen','english_name','name_en','generic_name','ชื่ออังกฤษ','iNN'],
   unit:['unit','หน่วย','uom','unit_of_measure'],
   catId:['catid','category','หมวดหมู่','main_category','หมวดหลัก'],
+  subId:['subid','subcategory','sub_category','sub_cat','หมวดย่อย','หมวดหมู่ย่อย'],
   hasVat:['hasvat','vat','มีvat','has_vat'],
   costEx:['costex','cost','ต้นทุน','cost_price','purchase_price','ราคาซื้อ'],
   sellEx:['sellex','sell','ราคาขาย','sell_price','selling_price'],
@@ -51,6 +52,8 @@ const SUP_ALIASES = {
   deliveryDays:['deliverydays','delivery','ระยะส่ง','lead_time'],
   rating:['rating','คะแนน','score'],
   address:['address','ที่อยู่'],
+  category:['category','ประเภท','ประเภทสินค้า','หมวด','หมวดหมู่'],
+  minOrder:['minorder','min_order','ขั้นต่ำ','minimum_order','ยอดสั่งขั้นต่ำ'],
 };
 
 function detectMap(headers, aliases) {
@@ -71,12 +74,22 @@ function parseDrugs(rows, map, cats) {
     const profitEx = +(sellEx-costEx).toFixed(2);
     const profitMargin = sellEx>0?+((profitEx/sellEx)*100).toFixed(1):0;
     const sPTN = parseInt(r[map.stockPTN])||0, sRAM = parseInt(r[map.stockRAM])||0, sCNX = parseInt(r[map.stockCNX])||0;
-    // Map category name to catId
+    // Map category + sub-category names (or ids) to their ids
     const catRaw = (r[map.catId]||'').trim();
+    const subRaw = (r[map.subId]||'').trim();
     const matchedCat = cats.find(c=>c.name===catRaw||c.nameEN===catRaw||c.id===catRaw);
+    let catId = matchedCat?.id, subId;
+    if (matchedCat) {
+      const ms = (matchedCat.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subRaw);
+      subId = ms?.id || matchedCat.subs?.[0]?.id;
+    } else if (subRaw) {
+      // sub given but main not matched → find the category that owns this sub
+      for (const c of cats) { const ms=(c.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subRaw); if(ms){catId=c.id;subId=ms.id;break;} }
+    }
+    catId = catId || 'CAT01'; subId = subId || 'S0101';
     return {
       code, nameTH: r[map.nameTH]||code, nameEN: r[map.nameEN]||code,
-      unit: r[map.unit]||'เม็ด', catId: matchedCat?.id||'CAT01', subId: matchedCat?.subs[0]?.id||'S0101',
+      unit: r[map.unit]||'เม็ด', catId, subId,
       hasVat, vatRate: hasVat?7:0, costEx, costInc: hasVat?+(costEx*1.07).toFixed(2):costEx,
       sellEx, sellInc: hasVat?+(sellEx*1.07).toFixed(2):sellEx,
       profitEx, profitMargin, stock:{PTN:sPTN,RAM:sRAM,CNX:sCNX},
@@ -94,18 +107,19 @@ function parseSuppliers(rows, map) {
     contact:r[map.contact]||'', phone:r[map.phone]||'', email:r[map.email]||'',
     taxId:r[map.taxId]||'', creditTerm:parseInt(r[map.creditTerm])||30,
     deliveryDays:parseInt(r[map.deliveryDays])||3, rating:parseFloat(r[map.rating])||4.0,
-    minOrder:5000, address:r[map.address]||'', category:'ยาทั่วไป', promotions:[], drugs:[]
+    minOrder:parseInt(r[map.minOrder])||5000, address:r[map.address]||'',
+    category:r[map.category]||'ยาทั่วไป', promotions:[], drugs:[]
   }));
 }
 
 /* ─── Template CSV generator ─── */
 function downloadTemplate(type) {
   const headers = type === 'drugs'
-    ? 'code,nameTH,nameEN,unit,catId,hasVat,costEx,sellEx,stockPTN,stockRAM,stockCNX,minStock,supplierId\n'
-    : 'id,name,nameEN,contact,phone,email,taxId,creditTerm,deliveryDays,rating,address\n';
+    ? 'code,nameTH,nameEN,unit,catId,subId,hasVat,costEx,sellEx,stockPTN,stockRAM,stockCNX,minStock,supplierId\n'
+    : 'id,name,nameEN,contact,phone,email,taxId,creditTerm,deliveryDays,rating,address,category,minOrder\n';
   const sample = type === 'drugs'
-    ? 'AMX001,อะม็อกซิซิลลิน 500มก.,Amoxicillin 500mg,เม็ด,CAT01,0,18,38,500,400,300,100,SUP001\n'
-    : 'SUP001,บริษัท ตัวอย่าง จำกัด,Sample Co. Ltd.,คุณ A,02-000-0000,sample@email.com,0000000000000,30,3,4.5,กรุงเทพ\n';
+    ? 'AMX001,อะม็อกซิซิลลิน 500มก.,Amoxicillin 500mg,เม็ด,โรคติดเชื้อ,ยาปฏิชีวนะ,0,18,38,500,400,300,100,SUP001\n'
+    : 'SUP001,บริษัท ตัวอย่าง จำกัด,Sample Co. Ltd.,คุณ A,02-000-0000,sample@email.com,0000000000000,30,3,4.5,กรุงเทพ,ยาทั่วไป,5000\n';
   const blob = new Blob([headers+sample], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`template_${type}.csv`; a.click();
