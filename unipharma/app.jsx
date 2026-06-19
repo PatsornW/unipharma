@@ -176,6 +176,15 @@ function App() {
   };
   const roleLabel = { admin: L('ผู้ดูแลระบบ', 'Admin'), manager: L('ฝ่ายจัดซื้อ', 'Purchasing'), viewer: L('ดูอย่างเดียว', 'View-only') }[role] || role;
 
+  // Viewers may only reach the PO page (view-only) and Out of Stock (submit reports).
+  const VIEWER_PAGES = ['orders', 'out_of_stock'];
+  const isViewer = role === 'viewer';
+  const homePage = isViewer ? 'orders' : 'dashboard';
+  const curPage = (isViewer && !VIEWER_PAGES.includes(page)) ? homePage : page;
+  useEffect(() => {
+    if (isViewer && !VIEWER_PAGES.includes(page)) setPage(homePage);
+  }, [isViewer, page]);
+
   const sharedProps = { lang, L, drugs, setDrugs, suppliers, setSuppliers, orders, setOrders, categories, setCategories, notify, setPage, setViewPO, setShowCreate, perm };
 
   // ── Auth gate (only when login is enforced) ──
@@ -201,7 +210,7 @@ function App() {
 
       {/* TOP NAV */}
       <nav className="topnav">
-        <a className="topnav-logo" href="#" onClick={e => { e.preventDefault(); setPage('dashboard'); }}>
+        <a className="topnav-logo" href="#" onClick={e => { e.preventDefault(); setPage(homePage); }}>
           <img src="assets/logo.png" alt="Unipharma" />
           <div className="topnav-brand">
             <span>UNIPHARMA</span>
@@ -210,8 +219,12 @@ function App() {
         </a>
 
         <div className="topnav-nav">
-          {NAV.filter(n => !n.adminOnly || perm.role === 'admin').map(n => (
-            <button key={n.id} className={`nav-btn${page === n.id ? ' active' : ''}`} onClick={() => setPage(n.id)}>
+          {NAV.filter(n => {
+            if (n.adminOnly && perm.role !== 'admin') return false;
+            if (isViewer) return VIEWER_PAGES.includes(n.id);
+            return true;
+          }).map(n => (
+            <button key={n.id} className={`nav-btn${curPage === n.id ? ' active' : ''}`} onClick={() => setPage(n.id)}>
               <span style={{ fontSize: 14 }}>{n.icon}</span>
               {L(n.th, n.en)}
               {n.id === 'stock' && lowStockCount > 0 && (
@@ -250,16 +263,16 @@ function App() {
 
       {/* MAIN CONTENT */}
       <div className="main-layout">
-        {(page === 'dashboard' || (page === 'sync' && perm.role !== 'admin')) && <DashboardPage {...sharedProps} />}
-        {page === 'drugs' && <DrugsPage {...sharedProps} />}
-        {page === 'orders' && <OrdersPage {...sharedProps} />}
-        {page === 'suppliers' && <SuppliersPage {...sharedProps} />}
-        {page === 'comparison' && <ComparisonPage {...sharedProps} />}
-        {page === 'stock' && <StockPage {...sharedProps} />}
-        {page === 'out_of_stock' && <OutOfStockPage lang={lang} L={L} perm={perm} notify={notify} drugs={drugs} />}
-        {page === 'reports' && <ReportsPage {...sharedProps} />}
-        {page === 'help' && <HelpPage lang={lang} L={L} perm={perm} />}
-        {page === 'sync' && perm.role === 'admin' && <DataSyncPage lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} suppliers={suppliers} setSuppliers={setSuppliers} notify={notify} perm={perm} />}
+        {(curPage === 'dashboard' || (curPage === 'sync' && perm.role !== 'admin')) && <DashboardPage {...sharedProps} />}
+        {curPage === 'drugs' && <DrugsPage {...sharedProps} />}
+        {curPage === 'orders' && <OrdersPage {...sharedProps} />}
+        {curPage === 'suppliers' && <SuppliersPage {...sharedProps} />}
+        {curPage === 'comparison' && <ComparisonPage {...sharedProps} />}
+        {curPage === 'stock' && <StockPage {...sharedProps} />}
+        {curPage === 'out_of_stock' && <OutOfStockPage lang={lang} L={L} perm={perm} notify={notify} drugs={drugs} />}
+        {curPage === 'reports' && <ReportsPage {...sharedProps} />}
+        {curPage === 'help' && <HelpPage lang={lang} L={L} perm={perm} />}
+        {curPage === 'sync' && perm.role === 'admin' && <DataSyncPage lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} suppliers={suppliers} setSuppliers={setSuppliers} notify={notify} perm={perm} />}
       </div>
 
       {/* CREATE PO MODAL */}

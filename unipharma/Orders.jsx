@@ -58,9 +58,11 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
           <div className="page-title">{L('การสั่งซื้อ', 'Purchase Orders')}</div>
           <div className="page-subtitle">{filtered.length} {L('รายการ · ยอดรวม', 'orders · Total')} ฿{UTILS.fmt(totalSpend, 0)}</div>
         </div>
+        {perm.canWrite && (
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           + {L('สร้างใบสั่งซื้อ', 'New PO')}
         </button>
+        )}
       </div>
 
       {/* Summary Chips */}
@@ -176,6 +178,7 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
       </div>
 
       {/* NON-PO RECEIPT */}
+      {perm.canWrite && (
       <div className="card" style={{ marginTop: 16, padding: 14, borderColor: 'rgba(251,191,36,.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22 }}>🧾</span>
@@ -188,6 +191,7 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
           </button>
         </div>
       </div>
+      )}
 
       {confirmId && (
         <Confirm lang={lang} msg={L('ต้องการลบใบสั่งซื้อนี้ใช่ไหม?', 'Delete this purchase order?')}

@@ -205,15 +205,13 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                 {
                   num:'3️⃣',
                   role:L('Viewer (ผู้ชมอย่างเดียว)','Viewer - Read-Only'),
-                  desc:L('ดูข้อมูลเท่านั้น ไม่สามารถแก้ไข','View-only access'),
+                  desc:L('เข้าถึงได้แค่ 2 หน้า: การสั่งซื้อ (ดูเท่านั้น) และ สินค้าหมด (ลงข้อมูลได้)','Access limited to 2 pages: Purchase Orders (view only) and Out of Stock (can submit)'),
                   permissions:[
-                    {icon:'✅',text:L('ดู PO','View PO')},
-                    {icon:'✅',text:L('ดูสินค้า','View Products')},
-                    {icon:'✅',text:L('ดูผู้จัดจำหน่าย','View Suppliers')},
-                    {icon:'✅',text:L('ดูรายงาน','View Reports')},
+                    {icon:'✅',text:L('ดู PO (อย่างเดียว)','View PO (only)')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด (ลงข้อมูล)','Report out-of-stock (submit)')},
                     {icon:'❌',text:L('สร้าง/แก้ไข PO','Create/Edit PO')},
-                    {icon:'❌',text:L('ลบข้อมูล','Delete Data')},
-                    {icon:'❌',text:L('ซิงค์ข้อมูล','Data Sync')},
+                    {icon:'❌',text:L('หน้าอื่น ๆ (ยา/ผู้จัดจำหน่าย/รายงาน ฯลฯ)','Other pages (drugs/suppliers/reports, etc.)')},
+                    {icon:'❌',text:L('ลบข้อมูล / ซิงค์ข้อมูล','Delete / Data Sync')},
                   ]
                 },
               ].map((role,i)=>(
