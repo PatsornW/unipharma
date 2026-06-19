@@ -29,18 +29,18 @@ function DashboardPage({ lang, L, drugs, orders, suppliers, setPage, setViewPO, 
     ]
   };
 
-  // Category breakdown
-  const catSpend = {};
+  // Category breakdown — label + colour come from the live category list,
+  // so it always reflects the current (and edited) categories.
+  const catMap = {}; // catId -> { label, value, color }
   drugs.forEach(d => {
     const cat = UTILS.getCat(d.catId);
-    const k = lang === 'th' ? cat.name : cat.nameEN;
-    catSpend[k] = (catSpend[k] || 0) + d.costEx * d.totalStock;
+    if (!catMap[d.catId]) catMap[d.catId] = { label: lang === 'th' ? cat.name : cat.nameEN, value: 0, color: cat.color || '#94a3b8' };
+    catMap[d.catId].value += d.costEx * d.totalStock;
   });
-  const catColors = ['#1177cc','#06b6d4','#16a34a','#d97706','#dc2626','#e5312a','#3399e8','#059669','#0284c7','#64748b'];
-  const catLabels = Object.keys(catSpend).slice(0, 8);
+  const catArr = Object.values(catMap).filter(c => c.value > 0).sort((a, b) => b.value - a.value).slice(0, 12);
   const pieChart = {
-    labels: catLabels,
-    datasets: [{ data: catLabels.map(k => +catSpend[k].toFixed(0)), backgroundColor: catColors, borderWidth: 0 }]
+    labels: catArr.map(c => c.label),
+    datasets: [{ data: catArr.map(c => +c.value.toFixed(0)), backgroundColor: catArr.map(c => c.color), borderWidth: 0 }]
   };
 
   // Top 5 drugs by order count
