@@ -9,6 +9,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const [catFilter, setCatFilter] = useState('');
   const [subFilter, setSubFilter] = useState('');
   const [vatFilter, setVatFilter] = useState('all'); // all | vat | novat
+  const [branchFilter, setBranchFilter] = useState(''); // '' = all branches; else PTN|RAM|CNX
   const [page, setPage] = useState(1);
   const [editDrug, setEditDrug] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -31,13 +32,14 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
     if (subFilter) list = list.filter(d => d.subId === subFilter);
     if (vatFilter === 'vat') list = list.filter(d => d.hasVat);
     if (vatFilter === 'novat') list = list.filter(d => !d.hasVat);
+    if (branchFilter) list = list.filter(d => ((d.stock && d.stock[branchFilter]) || 0) > 0);
     list.sort((a, b) => {
       let av = a[sortCol], bv = b[sortCol];
       if (typeof av === 'string') av = av.toLowerCase(), bv = bv.toLowerCase();
       return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
     });
     return list;
-  }, [drugs, search, catFilter, subFilter, vatFilter, sortCol, sortDir]);
+  }, [drugs, search, catFilter, subFilter, vatFilter, branchFilter, sortCol, sortDir]);
 
   const pageData = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -89,7 +91,8 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
         <div>
           <div className="page-title">{L('ฐานข้อมูลยา', 'Drug Database')}</div>
           <div className="page-subtitle">
-            {L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('รายการ (ระบบมีทั้งหมด', 'items (system total')} {TOTAL_DRUGS_SYSTEM.toLocaleString()} {L('รายการ)', 'items)')}
+            {L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('จาก', 'of')} {drugs.length.toLocaleString()} {L('รายการ', 'items')}
+            {branchFilter && ` · ${lang === 'th' ? (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).name : (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).nameEN}`}
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -150,6 +153,13 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
               </select>
             </div>
           )}
+          <div style={{ flex: '0 0 160px' }}>
+            <label className="label">{L('สาขา', 'Branch')}</label>
+            <select className="input" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }}>
+              <option value="">{L('ทุกสาขา', 'All Branches')}</option>
+              {DB.BRANCHES.map(b => <option key={b.id} value={b.id}>{lang === 'th' ? b.name : b.nameEN}</option>)}
+            </select>
+          </div>
           <div style={{ flex: '0 0 140px' }}>
             <label className="label">VAT</label>
             <select className="input" value={vatFilter} onChange={e => { setVatFilter(e.target.value); setPage(1); }}>
@@ -158,8 +168,8 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
               <option value="novat">{L('ไม่มี VAT', 'No VAT')}</option>
             </select>
           </div>
-          {(search || catFilter || vatFilter !== 'all') && (
-            <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setPage(1); }}>
+          {(search || catFilter || vatFilter !== 'all' || branchFilter) && (
+            <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setBranchFilter(''); setPage(1); }}>
               ✕ {L('ล้างตัวกรอง', 'Clear')}
             </button>
           )}
