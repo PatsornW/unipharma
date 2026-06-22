@@ -137,32 +137,35 @@ const UTILS = (() => {
   }
 
   // Packaging hierarchy by unit type
+  // qty = total BASE units contained in 1 of that level (absolute).
   const PKG_MAP = {
-    'เม็ด':    { base:'เม็ด',   baseEN:'Tablet',   levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:10},{th:'ลัง',en:'Carton', qty:24}]},
-    'แคปซูล':{ base:'แคปซูล',baseEN:'Capsule', levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:10},{th:'ลัง',en:'Carton', qty:24}]},
-    'ขวด':    { base:'ขวด',   baseEN:'Bottle',   levels:[{th:'แพ็ค',en:'Pack', qty:6},{th:'โหล',en:'Dozen', qty:2},{th:'ลัง',en:'Carton', qty:2}]},
+    'เม็ด':    { base:'เม็ด',   baseEN:'Tablet',   levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:2400}]},
+    'แคปซูล':{ base:'แคปซูล',baseEN:'Capsule', levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:2400}]},
+    'ขวด':    { base:'ขวด',   baseEN:'Bottle',   levels:[{th:'แพ็ค',en:'Pack', qty:6},{th:'โหล',en:'Dozen', qty:12},{th:'ลัง',en:'Carton', qty:24}]},
     'กระป๋อง':{ base:'กระป๋อง',baseEN:'MDI',     levels:[{th:'กล่อง',en:'Box',    qty:1},{th:'ลัง',en:'Carton', qty:6}]},
     'หลอด':    { base:'หลอด',   baseEN:'Tube',     levels:[{th:'กล่อง',en:'Box',    qty:1},{th:'ลัง',en:'Carton', qty:12}]},
     'ปากกา':  { base:'ปากกา',  baseEN:'Pen',      levels:[{th:'กล่อง',en:'Box',    qty:5}]},
-    'แพ็ค':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'แพ็ค',en:'Pack',   qty:100},{th:'ลัง',en:'Carton', qty:10}]},
-    'กล่อง':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:12}]},
+    'แพ็ค':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'แพ็ค',en:'Pack',   qty:100},{th:'ลัง',en:'Carton', qty:1000}]},
+    'กล่อง':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:1200}]},
     'เครื่อง':  { base:'เครื่อง',  baseEN:'Unit',     levels:[{th:'กล่อง',en:'Box',    qty:1}]},
   };
   function getPackaging(unit, lang, drug){
+    // qty = how many BASE units are in 1 of this level (absolute, not nested).
+    // e.g. base ขวด, แพ็ค=6 ขวด, โหล=12 ขวด, ลัง=24 ขวด.
+    const build = (base, baseEN, levels) => {
+      const chain = [{ th: base, en: baseEN || base, qty: 1, cumulative: 1 }];
+      levels.forEach(l => chain.push({ ...l, cumulative: (l.qty || 1) }));
+      const top = levels.length ? (levels[levels.length - 1].qty || 1) : 1;
+      return { base, baseEN: baseEN || base, levels, chain, totalInTop: top };
+    };
     // Prefer drug's own custom packaging over defaults
     if(drug && drug.pkgBase && drug.pkgLevels && drug.pkgLevels.length>0){
-      const chain=[{th:drug.pkgBase,en:drug.pkgBaseEN||drug.pkgBase,qty:1,cumulative:1}];
-      let total=1;
-      drug.pkgLevels.forEach(l=>{total*=(l.qty||1);chain.push({...l,cumulative:total});});
-      return {base:drug.pkgBase,baseEN:drug.pkgBaseEN||drug.pkgBase,levels:drug.pkgLevels,chain,totalInTop:total};
+      return build(drug.pkgBase, drug.pkgBaseEN || drug.pkgBase, drug.pkgLevels);
     }
     // Fall back to default map
     const pkg=PKG_MAP[unit];
     if(!pkg) return null;
-    let total=1;
-    const chain=[{th:pkg.base,en:pkg.baseEN,qty:1,cumulative:1}];
-    pkg.levels.forEach(l=>{total*=l.qty;chain.push({...l,cumulative:total});});
-    return {base:pkg.base,baseEN:pkg.baseEN,levels:pkg.levels,chain,totalInTop:total};
+    return build(pkg.base, pkg.baseEN, pkg.levels);
   }
 
   return {fmt,fmtDate,fmtDateISO,numToThaiWords,generatePONumber,statusLabel,statusColor,stars,debounce,
