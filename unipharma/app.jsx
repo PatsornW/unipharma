@@ -2,6 +2,15 @@
 const { useState, useEffect, useCallback, useMemo } = React;
 
 function App() {
+  // One-time cleanup: drop the old bundled sample-data cache so the app shows
+  // only real cloud-synced data (runs once per browser).
+  try {
+    if (localStorage.getItem('uni_seed') !== 'clean1') {
+      ['uni_drugs', 'uni_suppliers', 'uni_orders'].forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('uni_seed', 'clean1');
+    }
+  } catch (e) {}
+
   const [page, setPage] = useState(() => localStorage.getItem('uni_page') || 'dashboard');
   const [lang, setLang] = useState(() => localStorage.getItem('uni_lang') || 'th');
   const [theme, setTheme] = useState(() => localStorage.getItem('uni_theme') || 'light');
