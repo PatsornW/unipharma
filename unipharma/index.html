@@ -200,33 +200,77 @@ select.input{cursor:pointer}
 </head>
 <body>
 <div id="root">
-  <div id="boot-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg0);color:var(--txt2);font-family:'Noto Sans Thai','Inter',sans-serif;gap:18px;text-align:center;padding:20px">
-    <div style="width:48px;height:48px;border:3px solid rgba(0,85,204,.18);border-top-color:#1177cc;border-radius:50%;animation:bootspin 1s linear infinite"></div>
-    <div style="font-size:14px;font-weight:600;letter-spacing:.4px">UNIPHARMA</div>
-    <div style="font-size:12px;color:var(--txt3);max-width:300px;line-height:1.5">กำลังเตรียมระบบ… / Preparing the app…<br/><span style="font-size:11px;opacity:.8">ครั้งแรกอาจใช้เวลา 10–20 วินาที / First load may take 10–20 seconds</span></div>
+  <div id="boot-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f8fb;color:#0d3d7a;font-family:'Noto Sans Thai','Inter',sans-serif;gap:18px;text-align:center;padding:20px">
+    <div id="boot-spinner" style="width:48px;height:48px;border:3px solid rgba(0,85,204,.18);border-top-color:#1177cc;border-radius:50%;animation:bootspin 1s linear infinite"></div>
+    <div style="font-size:16px;font-weight:700;letter-spacing:.4px">UNIPHARMA</div>
+    <div id="boot-msg" style="font-size:13px;color:#5a7a95;max-width:340px;line-height:1.6">กำลังเตรียมระบบ… / Preparing the app…<br/><span style="font-size:11px;opacity:.8">ครั้งแรกอาจใช้เวลา 10–20 วินาที / First load may take 10–20 seconds</span></div>
+    <div id="boot-actions" style="display:none;flex-direction:column;gap:10px;margin-top:8px;align-items:center">
+      <button id="boot-reset" style="padding:10px 20px;background:#1177cc;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">🔄 ล้าง cache แล้วโหลดใหม่ / Clear cache & reload</button>
+      <div id="boot-err" style="font-size:11px;color:#b91c1c;max-width:340px;word-break:break-word;background:#fef2f2;padding:8px 12px;border-radius:8px;border:1px solid #fecaca;display:none"></div>
+    </div>
   </div>
   <style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
+  <script>
+    // If the app doesn't mount in 25s, show the "clear cache" button.
+    // Also catch any global JS error and display it so users can report it.
+    (function(){
+      var bootErr = null;
+      window.addEventListener('error', function(e){
+        bootErr = (e && e.message) ? (e.message + (e.filename ? ' @ '+(e.filename.split('/').pop())+':'+e.lineno : '')) : 'Script error';
+        showActions();
+      });
+      window.addEventListener('unhandledrejection', function(e){
+        bootErr = String((e && e.reason && (e.reason.message||e.reason)) || 'Promise rejection');
+        showActions();
+      });
+      function showActions(){
+        var loader = document.getElementById('boot-loader');
+        if (!loader) return; // React already mounted
+        var actions = document.getElementById('boot-actions');
+        if (actions) actions.style.display = 'flex';
+        var ms = document.getElementById('boot-msg');
+        if (ms) ms.innerHTML = 'ใช้เวลานานเกินไป — ลอง <b>ล้าง cache</b> ด้านล่าง<br/>Took too long — try the button below';
+        if (bootErr) {
+          var box = document.getElementById('boot-err');
+          if (box) { box.style.display = 'block'; box.textContent = bootErr; }
+        }
+      }
+      setTimeout(showActions, 25000); // 25s fallback
+      // Wire up the reset button
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn = document.getElementById('boot-reset');
+        if (!btn) return;
+        btn.onclick = function(){
+          try { localStorage.clear(); sessionStorage.clear(); } catch(e){}
+          try {
+            if ('caches' in window) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); });
+          } catch(e){}
+          location.replace(location.pathname + '?clr=' + Date.now());
+        };
+      });
+    })();
+  </script>
 </div>
-<script src="config.js?v=20260702"></script>
-<script src="data.js?v=20260702"></script>
-<script src="utils.js?v=20260702"></script>
-<script src="db.js?v=20260702"></script>
-<script type="text/babel" src="auth.jsx?v=20260702"></script>
-<script type="text/babel" src="components.jsx?v=20260702"></script>
-<script type="text/babel" src="Dashboard.jsx?v=20260702"></script>
-<script type="text/babel" src="Drugs.jsx?v=20260702"></script>
-<script type="text/babel" src="Orders.jsx?v=20260702"></script>
-<script type="text/babel" src="CreatePO.jsx?v=20260702"></script>
-<script type="text/babel" src="PODocument.jsx?v=20260702"></script>
-<script type="text/babel" src="Suppliers.jsx?v=20260702"></script>
-<script type="text/babel" src="Comparison.jsx?v=20260702"></script>
-<script type="text/babel" src="Stock.jsx?v=20260702"></script>
-<script type="text/babel" src="OutOfStock.jsx?v=20260702"></script>
-<script type="text/babel" src="Reports.jsx?v=20260702"></script>
-<script type="text/babel" src="Help.jsx?v=20260702"></script>
-<script type="text/babel" src="DataSync.jsx?v=20260702"></script>
-<script type="text/babel" src="CategoryManager.jsx?v=20260702"></script>
-<script type="text/babel" src="tweaks-panel.jsx?v=20260702"></script>
-<script type="text/babel" src="app.jsx?v=20260702"></script>
+<script src="config.js?v=20260703"></script>
+<script src="data.js?v=20260703"></script>
+<script src="utils.js?v=20260703"></script>
+<script src="db.js?v=20260703"></script>
+<script type="text/babel" src="auth.jsx?v=20260703"></script>
+<script type="text/babel" src="components.jsx?v=20260703"></script>
+<script type="text/babel" src="Dashboard.jsx?v=20260703"></script>
+<script type="text/babel" src="Drugs.jsx?v=20260703"></script>
+<script type="text/babel" src="Orders.jsx?v=20260703"></script>
+<script type="text/babel" src="CreatePO.jsx?v=20260703"></script>
+<script type="text/babel" src="PODocument.jsx?v=20260703"></script>
+<script type="text/babel" src="Suppliers.jsx?v=20260703"></script>
+<script type="text/babel" src="Comparison.jsx?v=20260703"></script>
+<script type="text/babel" src="Stock.jsx?v=20260703"></script>
+<script type="text/babel" src="OutOfStock.jsx?v=20260703"></script>
+<script type="text/babel" src="Reports.jsx?v=20260703"></script>
+<script type="text/babel" src="Help.jsx?v=20260703"></script>
+<script type="text/babel" src="DataSync.jsx?v=20260703"></script>
+<script type="text/babel" src="CategoryManager.jsx?v=20260703"></script>
+<script type="text/babel" src="tweaks-panel.jsx?v=20260703"></script>
+<script type="text/babel" src="app.jsx?v=20260703"></script>
 </body>
 </html>
