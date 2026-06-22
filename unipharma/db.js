@@ -285,14 +285,23 @@
       try { await client.auth.signOut(); } catch (e) {}
     },
     // role of the logged-in user: 'admin' | 'manager' | 'viewer'
+    // Retries a few times: right after login the profile row can be briefly
+    // unreadable (auth context / RLS settling), and we must NOT downgrade a
+    // real admin/manager to viewer because of that transient miss.
     async getMyRole() {
       if (!enabled) return null;
       try {
         const { data: u } = await client.auth.getUser();
         if (!u || !u.user) return null;
-        const res = await client.from("profiles").select("role, full_name, email").eq("id", u.user.id).single();
-        if (res.error) return { role: "viewer", email: u.user.email };
-        return { role: res.data.role, full_name: res.data.full_name, email: res.data.email };
+        for (var attempt = 0; attempt < 4; attempt++) {
+          var res = await client.from("profiles").select("role, full_name, email").eq("id", u.user.id).maybeSingle();
+          if (!res.error && res.data) {
+            return { role: res.data.role, full_name: res.data.full_name, email: res.data.email };
+          }
+          await new Promise(function (r) { setTimeout(r, 400); });
+        }
+        // Profile genuinely missing after retries → safe default.
+        return { role: "viewer", email: u.user.email };
       } catch (e) { return { role: "viewer" }; }
     },
     onAuthChange(cb) {
