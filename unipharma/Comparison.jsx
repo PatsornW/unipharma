@@ -28,12 +28,12 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
   // Build full comparison rows for selected drug
   const rows = useMemo(() => {
     if (!selectedDrug) return [];
-    // Primary: suppliers with drug explicitly in their drugs[] list.
-    // Fallback: the drug's own supplierId (ensures at least one row shows).
+    // Primary: suppliers with drug explicitly in their drugs[] catalog.
     let supList = suppliers.filter(s => (s.drugs||[]).includes(selectedDrug.code));
-    if (!supList.length && selectedDrug.supplierId) {
-      const pri = suppliers.find(s => s.id === selectedDrug.supplierId);
-      if (pri) supList = [pri];
+    // Fallback: use supplier IDs stored directly on the drug (main + extra)
+    if (!supList.length) {
+      const linked = [selectedDrug.supplierId, ...(selectedDrug.extraSupplierIds||[])].filter(Boolean);
+      supList = suppliers.filter(s => linked.includes(s.id));
     }
     return supList.map(s => {
       const costEx = getPrice(selectedDrug, s);

@@ -347,9 +347,18 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                               <div style={{ fontSize: 11, color: 'var(--txt4)' }}>Min: {d.minStock.toLocaleString()}</div>
                             </div>
                             <div>
-                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, fontWeight: 600 }}>{L('ผู้จัดจำหน่ายหลัก', 'Main Supplier')}</div>
-                              <div style={{ fontSize: 12 }}>{UTILS.getSupplier(d.supplierId).name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--txt3)' }}>{L('สั่งซื้อแล้ว', 'Ordered')} {d.orderCount} {L('ครั้ง/ปี', 'times/yr')}</div>
+                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, fontWeight: 600 }}>{L('ผู้จัดจำหน่าย', 'Suppliers')}</div>
+                              <div style={{ fontSize: 12 }}>
+                                <span style={{ color: 'var(--acc2)', fontSize: 10, marginRight: 4 }}>หลัก</span>
+                                {UTILS.getSupplier(d.supplierId).name}
+                              </div>
+                              {(d.extraSupplierIds||[]).filter(Boolean).map((sid, i) => (
+                                <div key={sid} style={{ fontSize: 12, marginTop: 2 }}>
+                                  <span style={{ color: 'var(--txt4)', fontSize: 10, marginRight: 4 }}>รายย่อย {i+1}</span>
+                                  {UTILS.getSupplier(sid).name || sid}
+                                </div>
+                              ))}
+                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 4 }}>{L('สั่งซื้อแล้ว', 'Ordered')} {d.orderCount} {L('ครั้ง/ปี', 'times/yr')}</div>
                             </div>
                             {(() => { const pkg=UTILS.getPackaging(d.unit,'th',d); return pkg ? (
                               <div>
