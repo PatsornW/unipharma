@@ -1,7 +1,6 @@
 // Drugs.jsx — Drug Database Page
 const { useState, useMemo, useCallback } = React;
 
-const TOTAL_DRUGS_SYSTEM = 10258; // simulated full dataset size
 const PER_PAGE = 100;
 
 function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategories, notify, perm = { canWrite: true } }) {

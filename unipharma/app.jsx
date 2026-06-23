@@ -26,8 +26,12 @@ function App() {
   const [categories, setCategories] = useState(() => {
     try { const s = localStorage.getItem('uni_categories'); return s ? JSON.parse(s) : DB.CATEGORIES; } catch { return DB.CATEGORIES; }
   });
-  // Mirror to the global the page components read directly (Drugs/Stock/DataSync/DrugForm).
+  // Mirror React state → global DB so UTILS.getSupplier / getDrug / getCat always return current data.
+  // Runs every render (before children), so helpers are never stale after any save/import.
   DB.CATEGORIES = categories;
+  DB.DRUGS = drugs;
+  DB.SUPPLIERS = suppliers;
+  DB.PURCHASE_ORDERS = orders;
   const [viewPO, setViewPO] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editPO, setEditPO] = useState(null);
