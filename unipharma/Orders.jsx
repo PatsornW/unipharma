@@ -44,6 +44,7 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
 
   const deleteOrder = id => {
     setOrders(prev => prev.filter(o => o.id !== id));
+    if (window.UNI_DB?.enabled) window.UNI_DB.deletePO(id).catch(() => {});
     notify(L('ลบใบสั่งซื้อแล้ว', 'PO deleted'), 'warn');
     setConfirmId(null);
   };
@@ -154,7 +155,7 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
                             {statusNextLabel[po.status]}
                           </button>
                         )}
-                        {po.status === 'draft' && perm.canDelete && (
+                        {perm.canDelete && (
                           <button className="btn btn-danger btn-xs" onClick={() => setConfirmId(po.id)}>
                             {L('ลบ', 'Delete')}
                           </button>
@@ -193,10 +194,15 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
       </div>
       )}
 
-      {confirmId && (
-        <Confirm lang={lang} msg={L('ต้องการลบใบสั่งซื้อนี้ใช่ไหม?', 'Delete this purchase order?')}
-          onConfirm={() => deleteOrder(confirmId)} onCancel={() => setConfirmId(null)} />
-      )}
+      {confirmId && (() => {
+        const po = orders.find(o => o.id === confirmId);
+        return (
+          <Confirm lang={lang}
+            msg={L(`ต้องการลบใบสั่งซื้อ ${po?.poNumber || ''} ใช่ไหม? ไม่สามารถกู้คืนได้`,
+                   `Delete PO ${po?.poNumber || ''}? This cannot be undone.`)}
+            onConfirm={() => deleteOrder(confirmId)} onCancel={() => setConfirmId(null)} />
+        );
+      })()}
     </div>
   );
 }
