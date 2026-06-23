@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -251,26 +250,39 @@ select.input{cursor:pointer}
     })();
   </script>
 </div>
-<script src="config.js?v=20260704"></script>
-<script src="data.js?v=20260704"></script>
-<script src="utils.js?v=20260704"></script>
-<script src="db.js?v=20260704"></script>
-<script type="text/babel" src="auth.jsx?v=20260704"></script>
-<script type="text/babel" src="components.jsx?v=20260704"></script>
-<script type="text/babel" src="Dashboard.jsx?v=20260704"></script>
-<script type="text/babel" src="Drugs.jsx?v=20260704"></script>
-<script type="text/babel" src="Orders.jsx?v=20260704"></script>
-<script type="text/babel" src="CreatePO.jsx?v=20260704"></script>
-<script type="text/babel" src="PODocument.jsx?v=20260704"></script>
-<script type="text/babel" src="Suppliers.jsx?v=20260704"></script>
-<script type="text/babel" src="Comparison.jsx?v=20260704"></script>
-<script type="text/babel" src="Stock.jsx?v=20260704"></script>
-<script type="text/babel" src="OutOfStock.jsx?v=20260704"></script>
-<script type="text/babel" src="Reports.jsx?v=20260704"></script>
-<script type="text/babel" src="Help.jsx?v=20260704"></script>
-<script type="text/babel" src="DataSync.jsx?v=20260704"></script>
-<script type="text/babel" src="CategoryManager.jsx?v=20260704"></script>
-<script type="text/babel" src="tweaks-panel.jsx?v=20260704"></script>
-<script type="text/babel" src="app.jsx?v=20260704"></script>
+<!-- Pre-compiled bundle (esbuild at build time) — no in-browser Babel needed.
+     If the bundle is missing (build didn't run / failed), fall back to the
+     legacy babel-standalone + individual JSX setup so the site keeps working. -->
+<script>
+(function(){
+  var s = document.createElement('script');
+  s.src = 'app.bundle.js?v=20260705';
+  s.onerror = function(){
+    // Bundle missing — load babel + individual files in order.
+    console.warn('[boot] bundle not found, falling back to babel-standalone');
+    var babel = document.createElement('script');
+    babel.src = 'https://unpkg.com/@babel/standalone@7.29.0/babel.min.js';
+    babel.crossOrigin = 'anonymous';
+    babel.onload = function(){
+      var v = '?v=20260705fb';
+      var loadJS = function(src){
+        var el = document.createElement('script'); el.src = src + v; el.async = false;
+        document.body.appendChild(el);
+      };
+      var loadBabel = function(src){
+        var el = document.createElement('script'); el.type = 'text/babel'; el.src = src + v; el.async = false;
+        document.body.appendChild(el);
+      };
+      ['config.js','data.js','utils.js','db.js'].forEach(loadJS);
+      ['auth.jsx','components.jsx','Dashboard.jsx','Drugs.jsx','Orders.jsx',
+       'CreatePO.jsx','PODocument.jsx','Suppliers.jsx','Comparison.jsx',
+       'Stock.jsx','OutOfStock.jsx','Reports.jsx','Help.jsx','DataSync.jsx',
+       'CategoryManager.jsx','tweaks-panel.jsx','app.jsx'].forEach(loadBabel);
+    };
+    document.head.appendChild(babel);
+  };
+  document.body.appendChild(s);
+})();
+</script>
 </body>
 </html>
