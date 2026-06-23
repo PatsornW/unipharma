@@ -1,22 +1,13 @@
 // Comparison.jsx — Price Comparison (Full Supplier Pricing)
 const { useState, useMemo } = React;
 
-// Supplier tier multipliers for price generation
-const SUP_MULTIPLIER = {
-  SUP001: 1.00, SUP002: 1.07, SUP003: 1.11, SUP004: 1.04,
-  SUP005: 0.97, SUP006: 1.09, SUP007: 1.02, SUP008: 0.99,
-  SUP009: 1.00, SUP010: 1.03
-};
-
-// Get price for a supplier-drug pair (COMP_PRICES or generated)
-function getPrice(drug, supId) {
+// Get price for a supplier-drug pair.
+// Priority: supplier's own drugPrices → drug's own costEx
+function getPrice(drug, sup) {
+  if (sup?.drugPrices?.[drug.code] !== undefined) return sup.drugPrices[drug.code];
   const comp = DB.COMP_PRICES[drug.code];
-  if (comp && comp[supId] !== undefined) return comp[supId];
-  const mult = SUP_MULTIPLIER[supId] || 1;
-  // Deterministic variation: hash of supId + code
-  const hash = [...(supId + drug.code)].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const jitter = ((hash % 11) - 5) * 0.005; // ±2.5%
-  return +(drug.costEx * (mult + jitter)).toFixed(2);
+  if (comp && comp[sup?.id] !== undefined) return comp[sup.id];
+  return drug.costEx;
 }
 
 function ComparisonPage({ lang, L, drugs, suppliers }) {
@@ -45,7 +36,7 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
       if (pri) supList = [pri];
     }
     return supList.map(s => {
-      const costEx = getPrice(selectedDrug, s.id);
+      const costEx = getPrice(selectedDrug, s);
       const costInc = selectedDrug.hasVat ? +(costEx * 1.07).toFixed(2) : costEx;
       const promos = (s.promotions || []).filter(p =>
         !p.catId || p.catId === selectedDrug.catId ||
@@ -107,7 +98,7 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--border2)', borderRadius: 'var(--r2)', boxShadow: 'var(--shadow2)', zIndex: 50, marginTop: 4, maxHeight: 300, overflowY: 'auto' }}>
                     {searchResults.map(d => {
                       const supCount = suppliers.filter(s => s.drugs?.includes(d.code)).length;
-                      const prices = suppliers.filter(s => s.drugs?.includes(d.code)).map(s => getPrice(d, s.id));
+                      const prices = suppliers.filter(s => s.drugs?.includes(d.code)).map(s => getPrice(d, s));
                       const minP = prices.length ? Math.min(...prices) : d.costEx;
                       const maxP = prices.length ? Math.max(...prices) : d.costEx;
                       return (
@@ -301,7 +292,7 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 12 }}>
             {popular.map(d => {
               const supList = suppliers.filter(s => s.drugs?.includes(d.code));
-              const prices = supList.map(s => getPrice(d, s.id));
+              const prices = supList.map(s => getPrice(d, s));
               const minP = prices.length ? Math.min(...prices) : d.costEx;
               const maxP = prices.length ? Math.max(...prices) : d.costEx;
               const savings = +(maxP - minP).toFixed(2);

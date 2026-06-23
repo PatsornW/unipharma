@@ -105,7 +105,7 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, orders, notify
       </div>
 
       {viewSup && <SupplierDetail sup={viewSup} lang={lang} L={L} drugs={drugs} orders={orders} onClose={() => setViewSup(null)} onEdit={() => { setEditSup(viewSup); setViewSup(null); }} />}
-      {(showAdd || editSup) && <SupplierForm sup={editSup} lang={lang} L={L} onSave={saveSup} onClose={() => { setShowAdd(false); setEditSup(null); }} />}
+      {(showAdd || editSup) && <SupplierForm sup={editSup} lang={lang} L={L} drugs={drugs} onSave={saveSup} onClose={() => { setShowAdd(false); setEditSup(null); }} />}
     </div>
   );
 }
@@ -140,13 +140,15 @@ function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
       <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--txt3)', marginBottom: 8 }}>📦 {L('รายการสินค้า', 'Products')} ({supDrugs.length})</div>
       <div className="tbl-wrap" style={{ maxHeight: 200, marginBottom: 16 }}>
         <table>
-          <thead><tr><th>{L('รหัส', 'Code')}</th><th>{L('ชื่อ', 'Name')}</th><th>{L('หน่วย', 'Unit')}</th><th className="tbl-num">{L('ต้นทุน', 'Cost')}</th><th className="tbl-num">{L('ราคาขาย', 'Sell')}</th></tr></thead>
+          <thead><tr><th>{L('รหัส', 'Code')}</th><th>{L('ชื่อ', 'Name')}</th><th>{L('หน่วย', 'Unit')}</th><th className="tbl-num">{L('ราคา Supplier นี้', "Supplier's Price")}</th><th className="tbl-num">{L('ราคาขาย', 'Sell')}</th></tr></thead>
           <tbody>{supDrugs.slice(0, 30).map(d => (
             <tr key={d.code}>
               <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--acc2)' }}>{d.code}</td>
               <td style={{ fontSize: 12 }}>{lang === 'th' ? d.nameTH : d.nameEN}</td>
               <td style={{ fontSize: 11, color: 'var(--txt3)' }}>{UTILS.getUnit(d.unit, lang)}</td>
-              <td className="tbl-num" style={{ fontSize: 12 }}>{UTILS.fmt(d.costEx)} ฿</td>
+              <td className="tbl-num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--acc2)' }}>
+                {UTILS.fmt(sup.drugPrices?.[d.code] ?? d.costEx)} ฿
+              </td>
               <td className="tbl-num" style={{ fontSize: 12 }}>{UTILS.fmt(d.sellEx)} ฿</td>
             </tr>
           ))}</tbody>
@@ -171,14 +173,41 @@ function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
   );
 }
 
-function SupplierForm({ sup, lang, L, onSave, onClose }) {
+function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   const isEdit = !!sup;
-  const [form, setForm] = useState(sup || { id: 'SUP' + Date.now(), code: '', name: '', nameEN: '', contact: '', phone: '', email: '', taxId: '', creditTerm: 30, deliveryDays: 3, rating: 4.0, minOrder: 5000, address: '', category: '', promotions: [], drugs: [] });
+  const [form, setForm] = useState(sup || { id: 'SUP' + Date.now(), code: '', name: '', nameEN: '', contact: '', phone: '', email: '', taxId: '', creditTerm: 30, deliveryDays: 3, rating: 4.0, minOrder: 5000, address: '', category: '', promotions: [], drugs: [], drugPrices: {} });
+  const [drugSearch, setDrugSearch] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const promos = form.promotions || [];
+  const drugList = form.drugs || [];
+  const drugPrices = form.drugPrices || {};
+
   const addPromo = () => setForm(f => ({ ...f, promotions: [...(f.promotions || []), { id: 'P' + Date.now(), name: '', type: 'percent', discount: 0, validUntil: '' }] }));
   const updatePromo = (id, k, v) => setForm(f => ({ ...f, promotions: (f.promotions || []).map(p => p.id === id ? { ...p, [k]: v } : p) }));
   const removePromo = (id) => setForm(f => ({ ...f, promotions: (f.promotions || []).filter(p => p.id !== id) }));
+
+  const addDrug = (drug) => {
+    setForm(f => ({
+      ...f,
+      drugs: (f.drugs||[]).includes(drug.code) ? f.drugs : [...(f.drugs||[]), drug.code],
+      drugPrices: { ...(f.drugPrices||{}), [drug.code]: (f.drugPrices||{})[drug.code] ?? drug.costEx },
+    }));
+    setDrugSearch('');
+  };
+  const removeDrug = (code) => setForm(f => {
+    const prices = { ...(f.drugPrices||{}) }; delete prices[code];
+    return { ...f, drugs: (f.drugs||[]).filter(c => c !== code), drugPrices: prices };
+  });
+  const setDrugPrice = (code, val) => setForm(f => ({ ...f, drugPrices: { ...(f.drugPrices||{}), [code]: parseFloat(val) || 0 } }));
+
+  const drugSearchResults = drugSearch.length > 0
+    ? allDrugs.filter(d => !drugList.includes(d.code) && (
+        d.code.toLowerCase().includes(drugSearch.toLowerCase()) ||
+        (d.nameTH||'').includes(drugSearch) ||
+        (d.nameEN||'').toLowerCase().includes(drugSearch.toLowerCase())
+      )).slice(0, 12)
+    : [];
+
   const inp = (k, lbl, type = 'text') => (
     <div className="form-group">
       <label className="label">{lbl}</label>
@@ -186,7 +215,7 @@ function SupplierForm({ sup, lang, L, onSave, onClose }) {
     </div>
   );
   return (
-    <Modal title={isEdit ? L('แก้ไขผู้จัดจำหน่าย', 'Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')} onClose={onClose} size={640}
+    <Modal title={isEdit ? L('แก้ไขผู้จัดจำหน่าย', 'Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')} onClose={onClose} size={700}
       footer={<><button className="btn btn-ghost" onClick={onClose}>{L('ยกเลิก', 'Cancel')}</button><button className="btn btn-primary" onClick={() => onSave(form)}>{L('บันทึก', 'Save')}</button></>}>
       <div className="form-row">
         {inp('name', L('ชื่อบริษัท (ไทย)', 'Thai Name'))}
@@ -240,6 +269,80 @@ function SupplierForm({ sup, lang, L, onSave, onClose }) {
             title={L('ลบ', 'Remove')} onClick={() => removePromo(p.id)}>🗑</button>
         </div>
       ))}
+
+      {/* ── Drug catalog section ── */}
+      <div className="divider" />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <label className="label" style={{ margin: 0 }}>
+          📦 {L('รายการสินค้าที่จำหน่าย', 'Products Catalog')}
+          <span style={{ fontWeight: 400, color: 'var(--txt4)', fontSize: 11, marginLeft: 6 }}>
+            {L('(ใช้สำหรับเปรียบเทียบราคา)', '(used for price comparison)')}
+          </span>
+        </label>
+        <span style={{ fontSize: 11, color: 'var(--txt3)' }}>{drugList.length} {L('รายการ', 'items')}</span>
+      </div>
+      <div style={{ position: 'relative', marginBottom: 10 }}>
+        <SearchInput value={drugSearch} onChange={setDrugSearch}
+          placeholder={L('ค้นหาสินค้าเพื่อเพิ่ม (รหัส / ชื่อ)…', 'Search products to add (code / name)…')} />
+        {drugSearchResults.length > 0 && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
+            {drugSearchResults.map(d => (
+              <div key={d.code} onMouseDown={() => addDrug(d)}
+                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                onMouseOut={e => e.currentTarget.style.background = ''}>
+                <div>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--acc2)' }}>{d.code}</span>
+                  <span style={{ marginLeft: 8, fontSize: 12 }}>{lang === 'th' ? d.nameTH : d.nameEN}</span>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--txt3)' }}>฿{UTILS.fmt(d.costEx)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {drugList.length > 0 && (
+        <div className="tbl-wrap" style={{ maxHeight: 240, marginBottom: 8 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>{L('รหัส', 'Code')}</th>
+                <th>{L('ชื่อ', 'Name')}</th>
+                <th style={{ textAlign: 'right' }}>{L('ราคาของ Supplier นี้ (฿)', "This Supplier's Price (฿)")}</th>
+                <th style={{ textAlign: 'right' }}>{L('ราคาขาย', 'Sell Price')}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {drugList.map(code => {
+                const drug = allDrugs.find(d => d.code === code);
+                if (!drug) return null;
+                return (
+                  <tr key={code}>
+                    <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--acc2)' }}>{code}</td>
+                    <td style={{ fontSize: 12 }}>{lang === 'th' ? drug.nameTH : drug.nameEN}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <input className="input input-sm" type="number" step="0.01"
+                        value={drugPrices[code] ?? drug.costEx}
+                        onChange={e => setDrugPrice(code, e.target.value)}
+                        style={{ width: 90, textAlign: 'right' }} />
+                    </td>
+                    <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--txt3)' }}>฿{UTILS.fmt(drug.sellEx)}</td>
+                    <td>
+                      <button className="btn-icon" onClick={() => removeDrug(code)} style={{ color: 'var(--err)', fontSize: 14 }}>✕</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {drugList.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--txt4)', marginBottom: 8 }}>
+          {L('ยังไม่มีรายการ — ค้นหาสินค้าด้านบนเพื่อเพิ่ม', 'No items yet — search above to add products')}
+        </div>
+      )}
     </Modal>
   );
 }
