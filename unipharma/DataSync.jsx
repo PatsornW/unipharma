@@ -88,6 +88,17 @@ function detectMap(headers, aliases) {
   return map;
 }
 
+// "Cat14" → "CAT14", "cat2" → "CAT02" (case-insensitive, zero-padded)
+function normCatId(raw) {
+  const m = (raw||'').match(/^cat(\d+)$/i);
+  return m ? 'CAT' + m[1].padStart(2,'0') : raw;
+}
+// "Cat14.1" → "S1401", "cat2.3" → "S0203"
+function normSubId(raw) {
+  const m = (raw||'').match(/^cat(\d+)\.(\d+)$/i);
+  return m ? 'S' + m[1].padStart(2,'0') + m[2].padStart(2,'0') : raw;
+}
+
 function parseDrugs(rows, map, cats) {
   return rows.filter(r => map.code && r[map.code]).map(r => {
     const code = r[map.code]?.trim().toUpperCase();
@@ -100,14 +111,16 @@ function parseDrugs(rows, map, cats) {
     // Map category + sub-category names (or ids) to their ids
     const catRaw = (r[map.catId]||'').trim();
     const subRaw = (r[map.subId]||'').trim();
-    const matchedCat = cats.find(c=>c.name===catRaw||c.nameEN===catRaw||c.id===catRaw);
+    const catLookup = normCatId(catRaw);   // "Cat14" → "CAT14"
+    const subLookup = normSubId(subRaw);   // "Cat14.1" → "S1401"
+    const matchedCat = cats.find(c=>c.name===catRaw||c.nameEN===catRaw||c.id===catLookup||c.id===catRaw);
     let catId = matchedCat?.id, subId;
     if (matchedCat) {
-      const ms = (matchedCat.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subRaw);
+      const ms = (matchedCat.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subLookup||s.id===subRaw);
       subId = ms?.id || matchedCat.subs?.[0]?.id;
     } else if (subRaw) {
       // sub given but main not matched → find the category that owns this sub
-      for (const c of cats) { const ms=(c.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subRaw); if(ms){catId=c.id;subId=ms.id;break;} }
+      for (const c of cats) { const ms=(c.subs||[]).find(s=>s.name===subRaw||s.nameEN===subRaw||s.id===subLookup||s.id===subRaw); if(ms){catId=c.id;subId=ms.id;break;} }
     }
     catId = catId || 'CAT01'; subId = subId || 'S0101';
     return {
@@ -232,6 +245,17 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
         const map = Object.fromEntries(prev.map(d=>[d.code,d]));
         preview.forEach(d => { map[d.code] = d; });
         return Object.values(map);
+      });
+      // Auto-link each drug to its primary supplier's drugs[] array
+      setSuppliers(prev => {
+        const supMap = Object.fromEntries(prev.map(s=>[s.id,{...s,drugs:[...(s.drugs||[])]}]));
+        preview.forEach(d => {
+          if (d.supplierId && supMap[d.supplierId] && !supMap[d.supplierId].drugs.includes(d.code))
+            supMap[d.supplierId].drugs.push(d.code);
+        });
+        const updated = Object.values(supMap);
+        if (window.UNI_DB?.enabled) window.UNI_DB.saveSuppliersBulk(updated).catch(()=>{});
+        return updated;
       });
       addHistory(source, L('ฐานข้อมูลยา','Drug DB'), preview.length);
       if (window.UNI_DB && window.UNI_DB.enabled) {

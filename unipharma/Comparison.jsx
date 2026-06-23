@@ -37,7 +37,13 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
   // Build full comparison rows for selected drug
   const rows = useMemo(() => {
     if (!selectedDrug) return [];
-    const supList = suppliers.filter(s => s.drugs?.includes(selectedDrug.code));
+    // Primary: suppliers with drug explicitly in their drugs[] list.
+    // Fallback: the drug's own supplierId (ensures at least one row shows).
+    let supList = suppliers.filter(s => (s.drugs||[]).includes(selectedDrug.code));
+    if (!supList.length && selectedDrug.supplierId) {
+      const pri = suppliers.find(s => s.id === selectedDrug.supplierId);
+      if (pri) supList = [pri];
+    }
     return supList.map(s => {
       const costEx = getPrice(selectedDrug, s.id);
       const costInc = selectedDrug.hasVat ? +(costEx * 1.07).toFixed(2) : costEx;
@@ -55,11 +61,15 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
   const mostExp = rows[rows.length - 1];
   const maxSavings = rows.length > 1 ? +(mostExp.afterPromo - cheapest.afterPromo).toFixed(2) : 0;
 
-  // Popular drugs that have comp_price data
+  // Popular: drugs linked to any supplier (via drugs[] or supplierId)
   const popular = useMemo(() => {
-    const codes = Object.keys(DB.COMP_PRICES);
-    return drugs.filter(d => codes.includes(d.code)).slice(0, 12);
-  }, [drugs]);
+    const linkedCodes = new Set([
+      ...Object.keys(DB.COMP_PRICES),
+      ...suppliers.flatMap(s => s.drugs||[]),
+      ...drugs.filter(d => d.supplierId).map(d => d.code),
+    ]);
+    return drugs.filter(d => linkedCodes.has(d.code)).slice(0, 12);
+  }, [drugs, suppliers]);
 
   const selectDrug = d => { setSelectedDrug(d); setSearch(''); setShowSearch(false); };
   const clearDrug = () => { setSelectedDrug(null); setSearch(''); };
