@@ -62,6 +62,9 @@ const DRUG_ALIASES = {
   stockCNX:['stockcnx','cnx','cnx_stock','stock_cnx','สต็อกcnx'],
   minStock:['minstock','min_stock','ขั้นต่ำ','minimum','สต็อกขั้นต่ำ'],
   supplierId:['supplierid','supplier','ผู้จำหน่าย','vendor','supplier_id'],
+  costPTN:['costptn','cost_ptn','ต้นทุนptn','ต้นทุน ptn','ราคาต้นทุนptn','ptn_cost'],
+  costRAM:['costram','cost_ram','ต้นทุนram','ต้นทุน ram','ราคาต้นทุนram','ram_cost'],
+  costCNX:['costcnx','cost_cnx','ต้นทุนcnx','ต้นทุน cnx','ราคาต้นทุนcnx','cnx_cost'],
 };
 const SUP_ALIASES = {
   id:['id','รหัส','supplier_id','sup_id'],
@@ -131,7 +134,12 @@ function parseDrugs(rows, map, cats) {
       profitEx, profitMargin, stock:{PTN:sPTN,RAM:sRAM,CNX:sCNX},
       totalStock:sPTN+sRAM+sCNX, minStock:parseInt(r[map.minStock])||100,
       supplierId: r[map.supplierId]||'SUP001', orderCount:0,
-      lastOrdered: new Date().toISOString().split('T')[0]
+      lastOrdered: new Date().toISOString().split('T')[0],
+      costByBranch: {
+        PTN: (map.costPTN && r[map.costPTN] !== '' && r[map.costPTN] != null) ? parseFloat(r[map.costPTN]) || null : null,
+        RAM: (map.costRAM && r[map.costRAM] !== '' && r[map.costRAM] != null) ? parseFloat(r[map.costRAM]) || null : null,
+        CNX: (map.costCNX && r[map.costCNX] !== '' && r[map.costCNX] != null) ? parseFloat(r[map.costCNX]) || null : null,
+      },
     };
   });
 }
@@ -175,14 +183,14 @@ function downloadTemplate(type) {
     const UNITS = ['เม็ด','แคปซูล','ขวด','แผง','หลอด','ซอง','กล่อง','ml','mg','หน่วย'];
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ['code','nameTH','nameEN','unit','catId','subId','hasVat','costEx','sellEx','stockPTN','stockRAM','stockCNX','minStock','supplierId'],
-      ['#คำอธิบาย','ชื่อยาภาษาไทย','ชื่อยาภาษาอังกฤษ','หน่วย (เลือก ▼)','หมวดหมู่ (เลือก ▼)','หมวดย่อย (เลือก ▼)','0=ไม่มีVAT / 1=มีVAT','ราคาต้นทุน (ไม่รวมVAT)','ราคาขาย (ไม่รวมVAT)','สต็อก PTN','สต็อก RAM','สต็อก CNX','สต็อกขั้นต่ำ','รหัส Supplier (เช่น SUP001)'],
-      ['AMX001','อะม็อกซิซิลลิน 500มก.','Amoxicillin 500mg','เม็ด','โรคติดเชื้อ','ยาปฏิชีวนะ',0,18,38,500,400,300,100,'SUP001'],
-      ['PAR500','พาราเซตามอล 500มก.','Paracetamol 500mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/พาราเซตามอล',0,5,15,1000,800,600,200,'SUP001'],
-      ['IBU400','ไอบูโพรเฟน 400มก.','Ibuprofen 400mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/ลดไข้',0,12,28,300,200,100,50,'SUP002'],
-      ['VIT001','วิตามินซี 1000มก.','Vitamin C 1000mg','เม็ด','อาหารเสริมและวิตามิน','วิตามินรวม',1,25,55,200,150,100,50,'SUP002'],
+      ['code','nameTH','nameEN','unit','catId','subId','hasVat','costEx','sellEx','stockPTN','stockRAM','stockCNX','minStock','supplierId','costPTN','costRAM','costCNX'],
+      ['#คำอธิบาย','ชื่อยาภาษาไทย','ชื่อยาภาษาอังกฤษ','หน่วย (เลือก ▼)','หมวดหมู่ (เลือก ▼)','หมวดย่อย (เลือก ▼)','0=ไม่มีVAT / 1=มีVAT','ราคาต้นทุนหลัก (ไม่รวมVAT)','ราคาขาย (ไม่รวมVAT)','สต็อก PTN','สต็อก RAM','สต็อก CNX','สต็อกขั้นต่ำ','รหัส Supplier','ต้นทุน PTN (เว้นว่าง=ใช้หลัก)','ต้นทุน RAM (เว้นว่าง=ใช้หลัก)','ต้นทุน CNX (เว้นว่าง=ใช้หลัก)'],
+      ['AMX001','อะม็อกซิซิลลิน 500มก.','Amoxicillin 500mg','เม็ด','โรคติดเชื้อ','ยาปฏิชีวนะ',0,18,38,500,400,300,100,'SUP001','','',''],
+      ['PAR500','พาราเซตามอล 500มก.','Paracetamol 500mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/พาราเซตามอล',0,5,15,1000,800,600,200,'SUP001',5.5,5,4.8],
+      ['IBU400','ไอบูโพรเฟน 400มก.','Ibuprofen 400mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/ลดไข้',0,12,28,300,200,100,50,'SUP002','','',''],
+      ['VIT001','วิตามินซี 1000มก.','Vitamin C 1000mg','เม็ด','อาหารเสริมและวิตามิน','วิตามินรวม',1,25,55,200,150,100,50,'SUP002','','',''],
     ]);
-    ws['!cols'] = [10,30,28,12,26,26,10,10,10,10,10,10,12,16].map(wch=>({wch}));
+    ws['!cols'] = [10,30,28,12,26,26,10,10,10,10,10,10,12,16,12,12,12].map(wch=>({wch}));
     ws['!views'] = [{ state:'frozen', xSplit:0, ySplit:1 }];
 
     // Hidden Lists sheet — dropdown values stored here, referenced by data validation
@@ -197,6 +205,7 @@ function downloadTemplate(type) {
       { sqref:'E3:E10000', type:'list', formula1:`Lists!$B$2:$B${1+CATS.length}`, showDropDown:false },
       { sqref:'F3:F10000', type:'list', formula1:`Lists!$C$2:$C${1+SUBS.length}`, showDropDown:false },
       { sqref:'G3:G10000', type:'list', formula1:'"0,1"', showDropDown:false },
+      // O:Q (costPTN/RAM/CNX) are free-form numeric — no dropdown
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'ยา');

@@ -22,6 +22,16 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
 
+  // Count items available per branch (stock > 0)
+  const branchCounts = useMemo(() => {
+    const counts = { '': drugs.length };
+    DB.BRANCHES.forEach(br => { counts[br.id] = drugs.filter(d => (d.stock?.[br.id] || 0) > 0).length; });
+    return counts;
+  }, [drugs]);
+
+  // Effective cost for a drug given the current branch filter
+  const getCost = (d, br) => (br && d.costByBranch?.[br] != null) ? d.costByBranch[br] : d.costEx;
+
   const filtered = useMemo(() => {
     let list = [...drugs];
     if (search) {
@@ -157,12 +167,23 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
               </select>
             </div>
           )}
-          <div style={{ flex: '0 0 160px' }}>
+          <div style={{ flex: '0 0 auto' }}>
             <label className="label">{L('สาขา', 'Branch')}</label>
-            <select className="input" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setPage(1); }}>
-              <option value="">{L('ทุกสาขา', 'All Branches')}</option>
-              {DB.BRANCHES.map(b => <option key={b.id} value={b.id}>{lang === 'th' ? b.name : b.nameEN}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {[{ id: '', name: 'ทุกสาขา', nameEN: 'All', color: 'var(--acc)' }, ...DB.BRANCHES].map(b => (
+                <button key={b.id}
+                  className={`btn btn-sm ${branchFilter === b.id ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => { setBranchFilter(b.id); setPage(1); }}
+                  style={{ whiteSpace: 'nowrap' }}>
+                  <span style={{ color: branchFilter === b.id ? '' : b.color, fontWeight: 700 }}>
+                    {lang === 'th' ? b.name : b.nameEN}
+                  </span>
+                  <span style={{ marginLeft: 5, fontSize: 11, opacity: .75 }}>
+                    {(branchCounts[b.id] ?? 0).toLocaleString()}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
           <div style={{ flex: '0 0 140px' }}>
             <label className="label">VAT</label>
@@ -191,7 +212,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                 <th>{L('หน่วย', 'Unit')}</th>
                 <th>{L('หมวดหมู่', 'Category')}</th>
                 <th style={{ textAlign: 'center' }}>VAT</th>
-                <ColHead col="costEx">{L('ต้นทุน', 'Cost')}</ColHead>
+                <ColHead col="costEx">{L('ต้นทุน', 'Cost')}{branchFilter ? ` [${branchFilter}]` : ''}</ColHead>
                 <ColHead col="sellEx">{L('ราคาขาย', 'Sell Price')}</ColHead>
                 <ColHead col="profitMargin">{L('กำไร', 'Profit')}</ColHead>
                 <ColHead col="totalStock">{L('สต็อกรวม', 'Total Stock')}</ColHead>
@@ -242,8 +263,11 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                           : <span className="badge" style={{ background: 'var(--bg4)', color: 'var(--txt3)' }}>-</span>}
                       </td>
                       <td className="tbl-num">
-                        <div style={{ fontWeight: 600 }}>{UTILS.fmt(d.costEx)} ฿</div>
-                        {d.hasVat && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>+VAT {UTILS.fmt(d.costInc)} ฿</div>}
+                        <div style={{ fontWeight: 600 }}>{UTILS.fmt(getCost(d, branchFilter))} ฿</div>
+                        {branchFilter && d.costByBranch?.[branchFilter] != null && (
+                          <div style={{ fontSize: 10, color: 'var(--acc2)' }}>≠ {UTILS.fmt(d.costEx)} ฿</div>
+                        )}
+                        {d.hasVat && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>+VAT</div>}
                       </td>
                       <td className="tbl-num">
                         <div style={{ fontWeight: 600 }}>{UTILS.fmt(d.sellEx)} ฿</div>
@@ -254,18 +278,24 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                         <div style={{ fontSize: 10, color: 'var(--txt3)' }}>{d.profitMargin}%</div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <span style={{ color: ss === 'err' ? 'var(--err)' : ss === 'warn' ? 'var(--warn)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
-                            {d.totalStock.toLocaleString()}
+                        {branchFilter ? (
+                          <span style={{ color: (d.stock?.[branchFilter]||0) <= d.minStock ? 'var(--err)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
+                            {(d.stock?.[branchFilter]||0).toLocaleString()}
                           </span>
-                          <div style={{ display: 'flex', gap: 3, fontSize: 10 }}>
-                            {DB.BRANCHES.map(br => (
-                              <span key={br.id} style={{ color: d.stock[br.id] <= d.minStock ? 'var(--err)' : 'var(--txt4)' }}>
-                                {br.id}:{d.stock[br.id]}
-                              </span>
-                            ))}
+                        ) : (
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <span style={{ color: ss === 'err' ? 'var(--err)' : ss === 'warn' ? 'var(--warn)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
+                              {d.totalStock.toLocaleString()}
+                            </span>
+                            <div style={{ display: 'flex', gap: 3, fontSize: 10 }}>
+                              {DB.BRANCHES.map(br => (
+                                <span key={br.id} style={{ color: d.stock[br.id] <= d.minStock ? 'var(--err)' : 'var(--txt4)' }}>
+                                  {br.id}:{d.stock[br.id]}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </td>
                       <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         {perm.canWrite ? (
@@ -280,9 +310,20 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                         <td colSpan={10} style={{ background: 'var(--bg3)', padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                             <div>
-                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, fontWeight: 600 }}>{L('ราคาต้นทุนแยก VAT', 'Cost Price (VAT breakdown)')}</div>
-                              <div style={{ fontSize: 12 }}>{L('ไม่รวม VAT', 'Excl. VAT')}: <b>{UTILS.fmt(d.costEx)} ฿</b></div>
-                              <div style={{ fontSize: 12 }}>{L('รวม VAT', 'Incl. VAT')}: <b>{UTILS.fmt(d.costInc)} ฿</b></div>
+                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, fontWeight: 600 }}>{L('ราคาต้นทุน', 'Cost Price')}</div>
+                              <div style={{ fontSize: 12 }}>{L('ราคาหลัก (ไม่รวม VAT)', 'Default (excl. VAT)')}: <b>{UTILS.fmt(d.costEx)} ฿</b></div>
+                              {d.hasVat && <div style={{ fontSize: 12 }}>{L('รวม VAT', 'Incl. VAT')}: <b>{UTILS.fmt(d.costInc)} ฿</b></div>}
+                              {DB.BRANCHES.some(br => d.costByBranch?.[br.id] != null) && (
+                                <div style={{ marginTop: 6 }}>
+                                  <div style={{ fontSize: 10, color: 'var(--txt4)', marginBottom: 3 }}>{L('ต้นทุนแยกสาขา', 'Cost by branch')}:</div>
+                                  {DB.BRANCHES.map(br => d.costByBranch?.[br.id] != null ? (
+                                    <div key={br.id} style={{ fontSize: 11, display: 'flex', gap: 6 }}>
+                                      <span style={{ color: br.color, fontWeight: 700, width: 36 }}>{br.id}:</span>
+                                      <b>{UTILS.fmt(d.costByBranch[br.id])} ฿</b>
+                                    </div>
+                                  ) : null)}
+                                </div>
+                              )}
                             </div>
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 4, fontWeight: 600 }}>{L('ราคาขายแยก VAT', 'Sell Price (VAT breakdown)')}</div>

@@ -164,12 +164,12 @@ function StockBar({ current, min, max }) {
 function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
   const cats = DB.CATEGORIES;
   const [form, setForm] = useState(() => {
-    if (drug) return drug;
+    if (drug) return { costByBranch: {}, ...drug };
     // New drug: pre-fill packaging from unit default
     const defPkg = UTILS.getPackaging('\u0e40\u0e21\u0e47\u0e14', 'th');
     return {
       code: '', nameTH: '', nameEN: '', unit: '\u0e40\u0e21\u0e47\u0e14', catId: 'CAT01', subId: 'S0101',
-      hasVat: false, vatRate: 0, costEx: 0, sellEx: 0,
+      hasVat: false, vatRate: 0, costEx: 0, sellEx: 0, costByBranch: {},
       stock: { PTN: 0, RAM: 0, CNX: 0 }, minStock: 100, supplierId: 'SUP001', orderCount: 0,
       pkgBase: defPkg?.base || '', pkgBaseEN: defPkg?.baseEN || '',
       pkgLevels: defPkg?.levels ? defPkg.levels.map(l=>({...l})) : []
@@ -320,6 +320,27 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
             {L('เปลี่ยน % → คำนวณราคาขายอัตโนมัติ', 'Change % → sell price auto-calculated')}
           </div>
         </div>
+      </div>
+      <div className="divider" />
+      <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--txt3)' }}>
+        💰 {L('ต้นทุนแยกสาขา', 'Cost by Branch')}
+        <span style={{ fontWeight: 400, color: 'var(--txt4)', marginLeft: 6 }}>
+          {L('(เว้นว่าง = ใช้ต้นทุนหลัก)', '(blank = use default cost)')}
+        </span>
+      </div>
+      <div className="form-row-3" style={{ marginBottom: 8 }}>
+        {DB.BRANCHES.map(br => (
+          <div key={br.id} className="form-group">
+            <label className="label" style={{ color: br.color }}>{br.name}</label>
+            <input className="input" type="number" step="0.01"
+              value={form.costByBranch?.[br.id] ?? ''}
+              placeholder={`${UTILS.fmt(parseFloat(form.costEx) || 0)}`}
+              onChange={e => {
+                const v = e.target.value === '' ? null : parseFloat(e.target.value) || 0;
+                setForm(f => ({ ...f, costByBranch: { ...(f.costByBranch || {}), [br.id]: v } }));
+              }} />
+          </div>
+        ))}
       </div>
       <div className="divider" />
       <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 600, color: 'var(--txt3)' }}>{L('สต็อกแต่ละสาขา', 'Stock per Branch')}</div>
