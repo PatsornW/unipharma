@@ -285,7 +285,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
         <SearchInput value={drugSearch} onChange={setDrugSearch}
           placeholder={L('ค้นหาสินค้าเพื่อเพิ่ม (รหัส / ชื่อ)…', 'Search products to add (code / name)…')} />
         {drugSearchResults.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
+          <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, background: 'var(--bg1)', border: '1px solid var(--border)', borderRadius: 8, maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 6px 18px rgba(0,0,0,.2)' }}>
             {drugSearchResults.map(d => (
               <div key={d.code} onMouseDown={() => addDrug(d)}
                 style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
