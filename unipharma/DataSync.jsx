@@ -148,37 +148,86 @@ function parseSuppliers(rows, map) {
   }));
 }
 
-/* ─── Template CSV generator ─── */
+/* ─── Template XLSX generator (with dropdowns via SheetJS) ─── */
 function downloadTemplate(type) {
-  const BOM = '﻿'; // UTF-8 BOM — fixes Thai character display in Excel
-  let csv;
+  const wb = XLSX.utils.book_new();
+
   if (type === 'drugs') {
-    csv = [
-      // Row 1: column names (matched by detectMap / DRUG_ALIASES)
-      'code,nameTH,nameEN,unit,catId,subId,hasVat,costEx,sellEx,stockPTN,stockRAM,stockCNX,minStock,supplierId',
-      // Row 2: description (# prefix = skipped by parser)
-      '#คำอธิบาย,ชื่อยาไทย,ชื่อยาอังกฤษ,หน่วย (เม็ด/ขวด/แผง/หลอด),หมวดหมู่ (ชื่อไทย หรือ CAT01),หมวดย่อย (ชื่อย่อย หรือ S0101 หรือ Cat1.1),มีVAT (0=ไม่มี / 1=มี),ราคาต้นทุน (ไม่รวมVAT),ราคาขาย (ไม่รวมVAT),สต็อก PTN,สต็อก RAM,สต็อก CNX,สต็อกขั้นต่ำ,รหัส Supplier',
-      // Sample rows — showing 3 valid catId/subId formats
-      'AMX001,อะม็อกซิซิลลิน 500มก.,Amoxicillin 500mg,เม็ด,โรคติดเชื้อ,ยาปฏิชีวนะ,0,18,38,500,400,300,100,SUP001',
-      'PAR500,พาราเซตามอล 500มก.,Paracetamol 500mg,เม็ด,CAT10,S1001,0,5,15,1000,800,600,200,SUP001',
-      'IBU400,ไอบูโพรเฟน 400มก.,Ibuprofen 400mg,เม็ด,Cat10,Cat10.2,0,12,28,300,200,100,50,SUP002',
-      'VIT001,วิตามินซี 1000มก.,Vitamin C 1000mg,เม็ด,CAT14,S1401,1,25,55,200,150,100,50,SUP002',
-    ].join('\n');
+    const CATS = [
+      'โรคหัวใจและหลอดเลือด','โรคติดเชื้อ','โรคระบบทางเดินหายใจ',
+      'โรคเบาหวานและต่อมไร้ท่อ','โรคระบบทางเดินอาหาร','โรคระบบประสาทและจิตเวช',
+      'โรคมะเร็ง','โรคภูมิคุ้มกันและภูมิแพ้','โรคกระดูกและข้อ',
+      'ยาจำหน่ายหน้าเคาเตอร์','โรคตา','โรคไต',
+      'เวชภัณฑ์ทางการแพทย์','อาหารเสริมและวิตามิน','อุปกรณ์ที่ไม่จัดหมวดหมู่',
+    ];
+    const SUBS = [
+      'ยาลดความดันโลหิต','ยาต้านการแข็งตัวของเลือด','ยาลดไขมัน',
+      'ยาปฏิชีวนะ','ยาต้านไวรัส','ยาฆ่าเชื้อรา',
+      'ยาขยายหลอดลม','ยาแก้แพ้/ยาแก้ไอ',
+      'ยาลดน้ำตาลในเลือด','ยาอินซูลิน','ยาไทรอยด์',
+      'ยาลดกรด/ยาแผลกระเพาะ','ยาระบาย','ยาแก้ท้องเสีย',
+      'ยาแก้ปวด/ลดไข้','ยาต้านซึมเศร้า','ยากันชัก',
+      'ยาเคมีบำบัด','ยากดภูมิคุ้มกัน','ยาแก้อักเสบ/ปวดข้อ',
+      'ยาแก้ปวด/พาราเซตามอล','ยาแก้ไข้','ยาแก้แพ้/แอนตี้ฮิสตามีน',
+      'ยาหยอดตา','ยาป้ายตา','ยาบำรุงไต',
+      'อุปกรณ์การแพทย์','ผ้าพันแผล/ถุงมือ','วิตามินรวม','วิตามิน','ของแถม',
+    ];
+    const UNITS = ['เม็ด','แคปซูล','ขวด','แผง','หลอด','ซอง','กล่อง','ml','mg','หน่วย'];
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['code','nameTH','nameEN','unit','catId','subId','hasVat','costEx','sellEx','stockPTN','stockRAM','stockCNX','minStock','supplierId'],
+      ['#คำอธิบาย','ชื่อยาภาษาไทย','ชื่อยาภาษาอังกฤษ','หน่วย (เลือก ▼)','หมวดหมู่ (เลือก ▼)','หมวดย่อย (เลือก ▼)','0=ไม่มีVAT / 1=มีVAT','ราคาต้นทุน (ไม่รวมVAT)','ราคาขาย (ไม่รวมVAT)','สต็อก PTN','สต็อก RAM','สต็อก CNX','สต็อกขั้นต่ำ','รหัส Supplier (เช่น SUP001)'],
+      ['AMX001','อะม็อกซิซิลลิน 500มก.','Amoxicillin 500mg','เม็ด','โรคติดเชื้อ','ยาปฏิชีวนะ',0,18,38,500,400,300,100,'SUP001'],
+      ['PAR500','พาราเซตามอล 500มก.','Paracetamol 500mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/พาราเซตามอล',0,5,15,1000,800,600,200,'SUP001'],
+      ['IBU400','ไอบูโพรเฟน 400มก.','Ibuprofen 400mg','เม็ด','ยาจำหน่ายหน้าเคาเตอร์','ยาแก้ปวด/ลดไข้',0,12,28,300,200,100,50,'SUP002'],
+      ['VIT001','วิตามินซี 1000มก.','Vitamin C 1000mg','เม็ด','อาหารเสริมและวิตามิน','วิตามินรวม',1,25,55,200,150,100,50,'SUP002'],
+    ]);
+    ws['!cols'] = [10,30,28,12,26,26,10,10,10,10,10,10,12,16].map(wch=>({wch}));
+    ws['!views'] = [{ state:'frozen', xSplit:0, ySplit:1 }];
+
+    // Hidden Lists sheet — dropdown values stored here, referenced by data validation
+    const maxL = Math.max(CATS.length, SUBS.length, UNITS.length);
+    const listsRows = [['หน่วย','หมวดหมู่','หมวดย่อย']];
+    for (let i = 0; i < maxL; i++) listsRows.push([UNITS[i]||'', CATS[i]||'', SUBS[i]||'']);
+    const listsWs = XLSX.utils.aoa_to_sheet(listsRows);
+    listsWs['!cols'] = [{wch:20},{wch:30},{wch:32}];
+
+    ws['!dataValidations'] = [
+      { sqref:'D3:D10000', type:'list', formula1:`Lists!$A$2:$A${1+UNITS.length}`, showDropDown:false },
+      { sqref:'E3:E10000', type:'list', formula1:`Lists!$B$2:$B${1+CATS.length}`, showDropDown:false },
+      { sqref:'F3:F10000', type:'list', formula1:`Lists!$C$2:$C${1+SUBS.length}`, showDropDown:false },
+      { sqref:'G3:G10000', type:'list', formula1:'"0,1"', showDropDown:false },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'ยา');
+    XLSX.utils.book_append_sheet(wb, listsWs, 'Lists');
+    wb.Workbook = { Sheets:[{name:'ยา',Hidden:0},{name:'Lists',Hidden:1}] };
+    XLSX.writeFile(wb, 'template_drugs.xlsx');
+
   } else {
-    csv = [
-      // Row 1: column names
-      'id,name,nameEN,contact,phone,email,taxId,creditTerm,deliveryDays,rating,address,category,minOrder',
-      // Row 2: description (# prefix = skipped by parser)
-      '#คำอธิบาย,ชื่อบริษัท (ไทย),ชื่อบริษัท (อังกฤษ),ชื่อผู้ติดต่อ,เบอร์โทร,อีเมล,เลขผู้เสียภาษี (13 หลัก),เครดิตเทอม (วัน),ระยะส่งสินค้า (วัน),คะแนน (1-5),ที่อยู่,ประเภทสินค้า,ยอดสั่งขั้นต่ำ (บาท)',
-      // Sample rows
-      'SUP001,บริษัท ยูนิไทย ฟาร์มา จำกัด,Unithai Pharma Co. Ltd.,คุณ สมชาย ใจดี,02-123-4567,contact@unithai.com,0105560012345,30,3,4.5,"123 ถนนพระราม9 กรุงเทพ 10310",ยาทั่วไป,5000',
-      'SUP002,บริษัท เมดิซัพพลาย จำกัด,Medisupply Co. Ltd.,คุณ สมหญิง รักดี,02-987-6543,info@medisupply.co.th,0105561098765,45,5,4.0,"456 ถนนวิทยุ กรุงเทพ 10330",วิตามินและอาหารเสริม,10000',
-    ].join('\n');
+    const SUP_CATS = ['ยาทั่วไป','วิตามินและอาหารเสริม','เวชภัณฑ์และอุปกรณ์','ยาเฉพาะทาง','ยาสามัญประจำบ้าน'];
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['id','name','nameEN','contact','phone','email','taxId','creditTerm','deliveryDays','rating','address','category','minOrder'],
+      ['#คำอธิบาย','ชื่อบริษัท (ไทย)','ชื่อบริษัท (อังกฤษ)','ชื่อผู้ติดต่อ','เบอร์โทร','อีเมล','เลขผู้เสียภาษี (13 หลัก)','เครดิต (วัน)','ระยะส่ง (วัน)','คะแนน 1-5','ที่อยู่','ประเภท (เลือก ▼)','ยอดขั้นต่ำ (บาท)'],
+      ['SUP001','บริษัท ยูนิไทย ฟาร์มา จำกัด','Unithai Pharma Co. Ltd.','คุณ สมชาย ใจดี','02-123-4567','contact@unithai.com','0105560012345',30,3,4.5,'123 ถนนพระราม9 กรุงเทพ','ยาทั่วไป',5000],
+      ['SUP002','บริษัท เมดิซัพพลาย จำกัด','Medisupply Co. Ltd.','คุณ สมหญิง รักดี','02-987-6543','info@medisupply.co.th','0105561098765',45,5,4.0,'456 ถนนวิทยุ กรุงเทพ','วิตามินและอาหารเสริม',10000],
+    ]);
+    ws['!cols'] = [10,28,26,18,14,24,16,10,10,8,28,20,14].map(wch=>({wch}));
+    ws['!views'] = [{ state:'frozen', xSplit:0, ySplit:1 }];
+
+    const listsWs = XLSX.utils.aoa_to_sheet([['ประเภทสินค้า'], ...SUP_CATS.map(c=>[c])]);
+    listsWs['!cols'] = [{wch:25}];
+
+    ws['!dataValidations'] = [
+      { sqref:'L3:L10000', type:'list', formula1:`Lists!$A$2:$A${1+SUP_CATS.length}`, showDropDown:false },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Supplier');
+    XLSX.utils.book_append_sheet(wb, listsWs, 'Lists');
+    wb.Workbook = { Sheets:[{name:'Supplier',Hidden:0},{name:'Lists',Hidden:1}] };
+    XLSX.writeFile(wb, 'template_suppliers.xlsx');
   }
-  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `template_${type}.csv`; a.click();
-  URL.revokeObjectURL(url);
 }
 
 /* ─── MAIN PAGE ─── */
