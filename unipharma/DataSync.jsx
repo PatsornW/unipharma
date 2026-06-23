@@ -100,7 +100,7 @@ function normSubId(raw) {
 }
 
 function parseDrugs(rows, map, cats) {
-  return rows.filter(r => map.code && r[map.code]).map(r => {
+  return rows.filter(r => map.code && r[map.code] && !String(r[map.code]).startsWith('#')).map(r => {
     const code = r[map.code]?.trim().toUpperCase();
     const costEx = parseFloat(r[map.costEx]) || 0;
     const sellEx = parseFloat(r[map.sellEx]) || 0;
@@ -137,7 +137,7 @@ function parseDrugs(rows, map, cats) {
 }
 
 function parseSuppliers(rows, map) {
-  return rows.filter(r=>map.id&&r[map.id]).map(r=>({
+  return rows.filter(r=>map.id&&r[map.id]&&!String(r[map.id]).startsWith('#')).map(r=>({
     id:r[map.id]?.trim()||('SUP'+Date.now()),
     code:'', name:r[map.name]||'', nameEN:r[map.nameEN]||r[map.name]||'',
     contact:r[map.contact]||'', phone:r[map.phone]||'', email:r[map.email]||'',
@@ -150,15 +150,34 @@ function parseSuppliers(rows, map) {
 
 /* ─── Template CSV generator ─── */
 function downloadTemplate(type) {
-  const headers = type === 'drugs'
-    ? 'code,nameTH,nameEN,unit,catId,subId,hasVat,costEx,sellEx,stockPTN,stockRAM,stockCNX,minStock,supplierId\n'
-    : 'id,name,nameEN,contact,phone,email,taxId,creditTerm,deliveryDays,rating,address,category,minOrder\n';
-  const sample = type === 'drugs'
-    ? 'AMX001,อะม็อกซิซิลลิน 500มก.,Amoxicillin 500mg,เม็ด,โรคติดเชื้อ,ยาปฏิชีวนะ,0,18,38,500,400,300,100,SUP001\n'
-    : 'SUP001,บริษัท ตัวอย่าง จำกัด,Sample Co. Ltd.,คุณ A,02-000-0000,sample@email.com,0000000000000,30,3,4.5,กรุงเทพ,ยาทั่วไป,5000\n';
-  const blob = new Blob([headers+sample], {type:'text/csv;charset=utf-8;'});
+  const BOM = '﻿'; // UTF-8 BOM — fixes Thai character display in Excel
+  let csv;
+  if (type === 'drugs') {
+    csv = [
+      // Row 1: column names (matched by detectMap / DRUG_ALIASES)
+      'code,nameTH,nameEN,unit,catId,subId,hasVat,costEx,sellEx,stockPTN,stockRAM,stockCNX,minStock,supplierId',
+      // Row 2: description (# prefix = skipped by parser)
+      '#คำอธิบาย,ชื่อยาไทย,ชื่อยาอังกฤษ,หน่วย (เม็ด/ขวด/แผง/หลอด),หมวดหมู่ (ชื่อไทย หรือ CAT01),หมวดย่อย (ชื่อย่อย หรือ S0101 หรือ Cat1.1),มีVAT (0=ไม่มี / 1=มี),ราคาต้นทุน (ไม่รวมVAT),ราคาขาย (ไม่รวมVAT),สต็อก PTN,สต็อก RAM,สต็อก CNX,สต็อกขั้นต่ำ,รหัส Supplier',
+      // Sample rows — showing 3 valid catId/subId formats
+      'AMX001,อะม็อกซิซิลลิน 500มก.,Amoxicillin 500mg,เม็ด,โรคติดเชื้อ,ยาปฏิชีวนะ,0,18,38,500,400,300,100,SUP001',
+      'PAR500,พาราเซตามอล 500มก.,Paracetamol 500mg,เม็ด,CAT10,S1001,0,5,15,1000,800,600,200,SUP001',
+      'IBU400,ไอบูโพรเฟน 400มก.,Ibuprofen 400mg,เม็ด,Cat10,Cat10.2,0,12,28,300,200,100,50,SUP002',
+      'VIT001,วิตามินซี 1000มก.,Vitamin C 1000mg,เม็ด,CAT14,S1401,1,25,55,200,150,100,50,SUP002',
+    ].join('\n');
+  } else {
+    csv = [
+      // Row 1: column names
+      'id,name,nameEN,contact,phone,email,taxId,creditTerm,deliveryDays,rating,address,category,minOrder',
+      // Row 2: description (# prefix = skipped by parser)
+      '#คำอธิบาย,ชื่อบริษัท (ไทย),ชื่อบริษัท (อังกฤษ),ชื่อผู้ติดต่อ,เบอร์โทร,อีเมล,เลขผู้เสียภาษี (13 หลัก),เครดิตเทอม (วัน),ระยะส่งสินค้า (วัน),คะแนน (1-5),ที่อยู่,ประเภทสินค้า,ยอดสั่งขั้นต่ำ (บาท)',
+      // Sample rows
+      'SUP001,บริษัท ยูนิไทย ฟาร์มา จำกัด,Unithai Pharma Co. Ltd.,คุณ สมชาย ใจดี,02-123-4567,contact@unithai.com,0105560012345,30,3,4.5,"123 ถนนพระราม9 กรุงเทพ 10310",ยาทั่วไป,5000',
+      'SUP002,บริษัท เมดิซัพพลาย จำกัด,Medisupply Co. Ltd.,คุณ สมหญิง รักดี,02-987-6543,info@medisupply.co.th,0105561098765,45,5,4.0,"456 ถนนวิทยุ กรุงเทพ 10330",วิตามินและอาหารเสริม,10000',
+    ].join('\n');
+  }
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=`template_${type}.csv`; a.click();
+  const a = document.createElement('a'); a.href = url; a.download = `template_${type}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
 
