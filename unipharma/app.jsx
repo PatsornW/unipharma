@@ -211,8 +211,11 @@ function App() {
   const homePage = isViewer ? 'orders' : 'dashboard';
   const curPage = (isViewer && !VIEWER_PAGES.includes(page)) ? homePage : page;
   useEffect(() => {
+    // Wait until auth is ready (role is known) before enforcing viewer redirect.
+    // Without this guard, the initial null me → role='viewer' fires before the real role loads.
+    if (authOn && !authReady) return;
     if (isViewer && !VIEWER_PAGES.includes(page)) setPage(homePage);
-  }, [isViewer, page]);
+  }, [isViewer, page, authReady]);
 
   const sharedProps = { lang, L, drugs, setDrugs, suppliers, setSuppliers, orders, setOrders, categories, setCategories, notify, setPage, setViewPO, setShowCreate, perm };
 
