@@ -457,6 +457,21 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{lang === 'th' ? it.nameTH : (it.nameEN||it.nameTH)}</div>
                         <div style={{ fontSize: 11, color: 'var(--txt3)' }}>{it.code}</div>
+                        {(() => {
+                          const drug = drugs.find(d => d.code === it.code);
+                          const deal = drug?.supplierDeals?.[supplierId];
+                          if (!deal || !(deal.buyQty>0||deal.freeQty>0||deal.freeItems||deal.specialDiscount>0||deal.note)) return null;
+                          const parts = [];
+                          if (deal.buyQty>0 && deal.freeQty>0) parts.push(`ซื้อ ${deal.buyQty} แถม ${deal.freeQty}`);
+                          if (deal.freeItems) parts.push(`ขอแถม: ${deal.freeItems}`);
+                          if (deal.specialDiscount>0) parts.push(`ส่วนลด ${deal.specialDiscount}%`);
+                          if (deal.note) parts.push(deal.note);
+                          return (
+                            <div style={{ fontSize:10, color:'var(--ok)', background:'var(--ok-bg)', border:'1px solid rgba(22,163,74,.25)', borderRadius:4, padding:'2px 7px', marginTop:4, lineHeight:1.5 }}>
+                              🎁 {parts.join(' · ')}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ minWidth: 140 }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>

@@ -169,13 +169,13 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
       const exSups = drug.extraSuppliers?.length
         ? drug.extraSuppliers
         : (drug.extraSupplierIds || []).map(id => ({ id, costEx: 0, sellEx: 0 }));
-      return { costByBranch: {}, ...drug, extraSuppliers: exSups };
+      return { costByBranch: {}, ...drug, extraSuppliers: exSups, supplierDeals: drug.supplierDeals || {} };
     }
     // New drug: pre-fill packaging from unit default
     const defPkg = UTILS.getPackaging('\u0e40\u0e21\u0e47\u0e14', 'th');
     return {
       code: '', nameTH: '', nameEN: '', unit: '\u0e40\u0e21\u0e47\u0e14', catId: 'CAT01', subId: 'S0101',
-      hasVat: false, vatRate: 0, costEx: 0, sellEx: 0, costByBranch: {}, extraSuppliers: [],
+      hasVat: false, vatRate: 0, costEx: 0, sellEx: 0, costByBranch: {}, extraSuppliers: [], supplierDeals: {},
       stock: { PTN: 0, RAM: 0, CNX: 0 }, minStock: 100, supplierId: 'SUP001', orderCount: 0,
       pkgBase: defPkg?.base || '', pkgBaseEN: defPkg?.baseEN || '',
       pkgLevels: defPkg?.levels ? defPkg.levels.map(l=>({...l})) : []
@@ -223,6 +223,10 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
     return nf;
   });
   const setStock = (br, v) => setForm(f => ({ ...f, stock: { ...f.stock, [br]: parseInt(v) || 0 } }));
+  const setDeal = (supId, field, val) => setForm(f => ({
+    ...f,
+    supplierDeals: { ...(f.supplierDeals||{}), [supId]: { ...((f.supplierDeals||{})[supId]||{}), [field]: val } }
+  }));
 
   const validate = () => {
     const e = {};
@@ -391,6 +395,74 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
           + {L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')}
         </button>
       )}
+
+      {/* ── Deals per supplier ── */}
+      {(() => {
+        const dealSups = [
+          { id: form.supplierId, isMain: true },
+          ...(form.extraSuppliers||[]).filter(s=>s.id).map((s,i)=>({ id:s.id, isMain:false, idx:i }))
+        ].filter(s=>s.id);
+        if (dealSups.length === 0) return null;
+        return (
+          <>
+            <div className="divider" />
+            <div style={{ marginBottom:10, fontSize:12, fontWeight:700, color:'var(--txt2)' }}>
+              🎁 {L('ดีลแต่ละผู้จัดจำหน่าย','Deals per Supplier')}
+              <span style={{ fontWeight:400, color:'var(--txt4)', marginLeft:8, fontSize:11 }}>
+                {L('(แสดงเป็น reminder ตอนสั่งซื้อ)','(shown as reminder when ordering)')}
+              </span>
+            </div>
+            {dealSups.map(({ id, isMain }) => {
+              const sup = UTILS.getSupplier(id);
+              const deal = (form.supplierDeals||{})[id] || {};
+              const hasDeal = deal.buyQty>0 || deal.freeQty>0 || deal.freeItems || deal.specialDiscount>0 || deal.note;
+              return (
+                <div key={id} style={{ marginBottom:8, padding:'10px 12px', background: hasDeal?'var(--ok-bg)':'var(--bg2)', borderRadius:8, border:`1px solid ${hasDeal?'rgba(22,163,74,.3)':'var(--border)'}` }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:hasDeal?'var(--ok)':'var(--txt3)', marginBottom:8 }}>
+                    {isMain?'⭐':'◆'} {sup.name||sup.nameEN||id}
+                    {isMain && <span style={{ fontWeight:400, marginLeft:6, color:'var(--txt4)' }}>{L('(ผู้จัดจำหน่ายหลัก)','(Main Supplier)')}</span>}
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'80px 80px 1fr 110px', gap:8, marginBottom:6 }}>
+                    <div>
+                      <div className="label" style={{ fontSize:10 }}>{L('ซื้อ (ชิ้น)','Buy (qty)')}</div>
+                      <input className="input input-sm" type="number" min="0" step="1"
+                        value={deal.buyQty||''} placeholder="0" style={{ textAlign:'center' }}
+                        onChange={e=>setDeal(id,'buyQty',parseInt(e.target.value)||0)} />
+                    </div>
+                    <div>
+                      <div className="label" style={{ fontSize:10 }}>{L('แถม (ชิ้น)','Free (qty)')}</div>
+                      <input className="input input-sm" type="number" min="0" step="1"
+                        value={deal.freeQty||''} placeholder="0" style={{ textAlign:'center' }}
+                        onChange={e=>setDeal(id,'freeQty',parseInt(e.target.value)||0)} />
+                    </div>
+                    <div>
+                      <div className="label" style={{ fontSize:10 }}>{L('รายการขอแถม','Bonus Items to Request')}</div>
+                      <input className="input input-sm" type="text"
+                        value={deal.freeItems||''}
+                        placeholder={L('เช่น ถุงมือ, กล่อง, อุปกรณ์...','e.g. gloves, box, accessories...')}
+                        onChange={e=>setDeal(id,'freeItems',e.target.value)} />
+                    </div>
+                    <div>
+                      <div className="label" style={{ fontSize:10 }}>Special Discount %</div>
+                      <input className="input input-sm" type="number" min="0" max="100" step="0.1"
+                        value={deal.specialDiscount||''} placeholder="0" style={{ textAlign:'center' }}
+                        onChange={e=>setDeal(id,'specialDiscount',parseFloat(e.target.value)||0)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="label" style={{ fontSize:10 }}>{L('หมายเหตุดีล / Note','Deal Note')}</div>
+                    <input className="input input-sm" type="text"
+                      value={deal.note||''}
+                      placeholder={L('เช่น โทรขอก่อนสั่ง, เฉพาะออนไลน์, ต้องสั่งขั้นต่ำ...','e.g. Call before ordering, online only, minimum order...')}
+                      onChange={e=>setDeal(id,'note',e.target.value)} />
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        );
+      })()}
+
       <div className="divider" />
       <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--txt3)' }}>
         💰 {L('ต้นทุนแยกสาขา', 'Cost by Branch')}

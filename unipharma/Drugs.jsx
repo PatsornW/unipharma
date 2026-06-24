@@ -364,6 +364,31 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                               ))}
                               <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 4 }}>{L('สั่งซื้อแล้ว', 'Ordered')} {d.orderCount} {L('ครั้ง/ปี', 'times/yr')}</div>
                             </div>
+                            {(() => {
+                              const deals = d.supplierDeals || {};
+                              const supIds = [d.supplierId, ...(d.extraSuppliers||(d.extraSupplierIds||[]).map(id=>({id}))).filter(s=>s.id).map(s=>s.id)].filter(Boolean);
+                              const activDeals = supIds.map(sid => ({ sid, deal: deals[sid] })).filter(({ deal }) => deal && (deal.buyQty>0||deal.freeQty>0||deal.freeItems||deal.specialDiscount>0||deal.note));
+                              if (!activDeals.length) return null;
+                              return (
+                                <div>
+                                  <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:4, fontWeight:600 }}>🎁 {L('ดีล','Deals')}</div>
+                                  {activDeals.map(({ sid, deal }) => {
+                                    const sup = UTILS.getSupplier(sid);
+                                    const parts = [];
+                                    if (deal.buyQty>0 && deal.freeQty>0) parts.push(`ซื้อ ${deal.buyQty} แถม ${deal.freeQty}`);
+                                    if (deal.freeItems) parts.push(`ของแถม: ${deal.freeItems}`);
+                                    if (deal.specialDiscount>0) parts.push(`ส่วนลด ${deal.specialDiscount}%`);
+                                    if (deal.note) parts.push(deal.note);
+                                    return (
+                                      <div key={sid} style={{ fontSize:11, marginBottom:3, padding:'3px 8px', background:'var(--ok-bg)', borderRadius:6, border:'1px solid rgba(22,163,74,.2)' }}>
+                                        <span style={{ fontWeight:700, color:'var(--ok)', marginRight:4 }}>{sup.name||sup.nameEN||sid}:</span>
+                                        {parts.join(' · ')}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                             {(() => { const pkg=UTILS.getPackaging(d.unit,'th',d); return pkg ? (
                               <div>
                                 <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:4, fontWeight:600 }}>📦 {L('หน่วยบรรจุ','Packaging')}</div>
