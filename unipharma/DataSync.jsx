@@ -258,6 +258,10 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
   const [step, setStep] = useState(1); // 1=upload 2=map 3=preview 4=done
   const [history, setHistory] = useState(() => { try{return JSON.parse(localStorage.getItem('uni_sync_hist')||'[]')}catch{return []} });
   const fileRef = useRef();
+  const [sqlSub, setSqlSub] = useState('export');
+  const [sqlOutput, setSqlOutput] = useState('');
+  const [sqlRunning, setSqlRunning] = useState(false);
+  const [sqlExportType, setSqlExportType] = useState('drugs');
 
   const addHistory = useCallback((source, type, count) => {
     const entry = { date: new Date().toISOString(), source, type, count };
@@ -366,11 +370,126 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
 
   const reset = () => { setStep(1); setPreview(null); setRawRows(null); setColMap(null); };
 
+  /* ── SQL Sync helpers ── */
+  const sqlEsc = s => String(s||'').replace(/'/g, "''");
+
+  const generateSqlExport = () => {
+    const lines = ['BEGIN;', ''];
+    if (sqlExportType === 'drugs') {
+      lines.push(`-- ยา ${drugs.length} รายการ — Generated: ${new Date().toISOString()}`, '');
+      drugs.forEach(d => {
+        lines.push(
+          `INSERT INTO drugs (code,name_th,name_en,cat_id,sub_id,supplier_id,has_vat,cost_ex,sell_ex,total_stock,data) VALUES ` +
+          `('${sqlEsc(d.code)}','${sqlEsc(d.nameTH)}','${sqlEsc(d.nameEN)}','${sqlEsc(d.catId||'')}','${sqlEsc(d.subId||'')}','${sqlEsc(d.supplierId||'')}',${!!d.hasVat},${d.costEx||0},${d.sellEx||0},${d.totalStock||0},'${sqlEsc(JSON.stringify(d))}'::jsonb) ` +
+          `ON CONFLICT (code) DO UPDATE SET name_th=EXCLUDED.name_th,name_en=EXCLUDED.name_en,cat_id=EXCLUDED.cat_id,cost_ex=EXCLUDED.cost_ex,sell_ex=EXCLUDED.sell_ex,total_stock=EXCLUDED.total_stock,data=EXCLUDED.data;`
+        );
+      });
+    } else {
+      lines.push(`-- Supplier ${suppliers.length} ราย — Generated: ${new Date().toISOString()}`, '');
+      suppliers.forEach(s => {
+        lines.push(
+          `INSERT INTO suppliers (id,code,name,name_en,category,data) VALUES ` +
+          `('${sqlEsc(s.id)}','${sqlEsc(s.code||'')}','${sqlEsc(s.name)}','${sqlEsc(s.nameEN||s.name)}','${sqlEsc(s.category||'')}','${sqlEsc(JSON.stringify(s))}'::jsonb) ` +
+          `ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,name_en=EXCLUDED.name_en,category=EXCLUDED.category,data=EXCLUDED.data;`
+        );
+      });
+    }
+    lines.push('', 'COMMIT;');
+    setSqlOutput(lines.join('\n'));
+  };
+
+  const downloadSql = () => {
+    if (!sqlOutput) return;
+    const blob = new Blob([sqlOutput], { type: 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `unipharma_${sqlExportType}_${new Date().toISOString().slice(0,10)}.sql`;
+    a.click();
+  };
+
+  const SQL_FIXES = [
+    {
+      id: 'nameEN', icon: '🔤',
+      labelTH: 'แก้ไข nameEN ยา (ที่ยังเป็น code หรือว่างเปล่า)',
+      labelEN: 'Fix drug nameEN (blank or equals drug code)',
+      check: () => drugs.filter(d => !d.nameEN || d.nameEN.trim() === d.code || d.nameEN.trim() === '').length,
+      run: async () => {
+        const toFix = drugs.filter(d => !d.nameEN || d.nameEN.trim() === d.code || d.nameEN.trim() === '');
+        if (!toFix.length) { notify(L('ไม่พบข้อมูลที่ต้องแก้ไข','No records need fixing'),'ok'); return; }
+        const fixed = toFix.map(d => ({ ...d, nameEN: (d.nameTH||d.code).trim() }));
+        if (window.UNI_DB?.enabled) await window.UNI_DB.saveDrugsBulk(fixed);
+        setDrugs(prev => { const m=Object.fromEntries(prev.map(d=>[d.code,d])); fixed.forEach(d=>{m[d.code]=d;}); return Object.values(m); });
+        notify(L(`แก้ไข ${fixed.length} รายการ ✓`,`Fixed ${fixed.length} records ✓`),'ok');
+      },
+    },
+    {
+      id: 'supNameEN', icon: '🏭',
+      labelTH: 'แก้ไข nameEN Supplier (ที่ว่างเปล่า)',
+      labelEN: 'Fix supplier nameEN (blank)',
+      check: () => suppliers.filter(s => !s.nameEN || !s.nameEN.trim()).length,
+      run: async () => {
+        const toFix = suppliers.filter(s => !s.nameEN || !s.nameEN.trim());
+        if (!toFix.length) { notify(L('ไม่พบข้อมูลที่ต้องแก้ไข','No records need fixing'),'ok'); return; }
+        const fixed = toFix.map(s => ({ ...s, nameEN: s.name || s.id }));
+        if (window.UNI_DB?.enabled) await window.UNI_DB.saveSuppliersBulk(fixed);
+        setSuppliers(prev => { const m=Object.fromEntries(prev.map(s=>[s.id,s])); fixed.forEach(s=>{m[s.id]=s;}); return Object.values(m); });
+        notify(L(`แก้ไข ${fixed.length} ราย ✓`,`Fixed ${fixed.length} suppliers ✓`),'ok');
+      },
+    },
+    {
+      id: 'totalStock', icon: '📦',
+      labelTH: 'คำนวณ totalStock ใหม่ (จาก stock.PTN+RAM+CNX)',
+      labelEN: 'Recalculate totalStock (from stock.PTN+RAM+CNX)',
+      check: () => drugs.filter(d => { const c=(d.stock?.PTN||0)+(d.stock?.RAM||0)+(d.stock?.CNX||0); return c!==d.totalStock; }).length,
+      run: async () => {
+        const toFix = drugs.filter(d => { const c=(d.stock?.PTN||0)+(d.stock?.RAM||0)+(d.stock?.CNX||0); return c!==d.totalStock; });
+        if (!toFix.length) { notify(L('สต็อกถูกต้องทั้งหมด','All totals correct'),'ok'); return; }
+        const fixed = toFix.map(d => ({ ...d, totalStock:(d.stock?.PTN||0)+(d.stock?.RAM||0)+(d.stock?.CNX||0) }));
+        if (window.UNI_DB?.enabled) await window.UNI_DB.saveDrugsBulk(fixed);
+        setDrugs(prev => { const m=Object.fromEntries(prev.map(d=>[d.code,d])); fixed.forEach(d=>{m[d.code]=d;}); return Object.values(m); });
+        notify(L(`อัปเดต ${fixed.length} รายการ ✓`,`Updated ${fixed.length} records ✓`),'ok');
+      },
+    },
+  ];
+
+  const SQL_SNIPPETS = [
+    {
+      labelTH: 'แก้ nameEN ที่เป็น code ยา',
+      labelEN: 'Fix nameEN equal to drug code',
+      sql: `-- แก้ไข nameEN ที่เป็น code ยา ให้ใช้ nameTH แทน\nUPDATE drugs\nSET data = jsonb_set(data, '{nameEN}', data->'nameTH'),\n    name_en = data->>'nameTH'\nWHERE data->>'nameEN' = data->>'code'\n   OR data->>'nameEN' IS NULL\n   OR trim(data->>'nameEN') = '';`,
+    },
+    {
+      labelTH: 'คำนวณ totalStock ใหม่ทั้งหมด',
+      labelEN: 'Recalculate all totalStock',
+      sql: `-- คำนวณ totalStock จาก stock.PTN + RAM + CNX\nUPDATE drugs SET\n  total_stock =\n    COALESCE((data->'stock'->>'PTN')::int,0) +\n    COALESCE((data->'stock'->>'RAM')::int,0) +\n    COALESCE((data->'stock'->>'CNX')::int,0),\n  data = jsonb_set(data, '{totalStock}', to_jsonb(\n    COALESCE((data->'stock'->>'PTN')::int,0) +\n    COALESCE((data->'stock'->>'RAM')::int,0) +\n    COALESCE((data->'stock'->>'CNX')::int,0)\n  ));`,
+    },
+    {
+      labelTH: 'ดูยาที่ไม่มีราคาทุน',
+      labelEN: 'Show drugs with no cost price',
+      sql: `-- รายการยาที่ยังไม่ได้กรอกราคาทุน\nSELECT data->>'code' AS code,\n       data->>'nameTH' AS name_th,\n       (data->>'costEx')::numeric AS cost_ex\nFROM drugs\nWHERE (data->>'costEx')::numeric = 0 OR data->>'costEx' IS NULL\nORDER BY data->>'code';`,
+    },
+    {
+      labelTH: 'นับยาต่อหมวดหมู่',
+      labelEN: 'Drug count per category',
+      sql: `-- นับจำนวนยา + สต็อกรวม ต่อหมวดหมู่\nSELECT data->>'catId' AS cat_id,\n       COUNT(*) AS drug_count,\n       SUM((data->>'totalStock')::int) AS total_units\nFROM drugs\nGROUP BY data->>'catId'\nORDER BY drug_count DESC;`,
+    },
+    {
+      labelTH: 'ดู Supplier ที่ nameEN ว่าง',
+      labelEN: 'Suppliers missing English name',
+      sql: `SELECT id, name, name_en\nFROM suppliers\nWHERE name_en IS NULL OR trim(name_en) = ''\nORDER BY name;`,
+    },
+    {
+      labelTH: 'ดูประวัติการสั่งซื้อล่าสุด 30 รายการ',
+      labelEN: 'Last 30 purchase orders',
+      sql: `SELECT po_number, branch, supplier_id, status, po_date, grand_total\nFROM purchase_orders\nORDER BY po_date DESC\nLIMIT 30;`,
+    },
+  ];
+
   const TABS = [
-    { id:'sheets', icon:'📊', th:'Google Sheets', en:'Google Sheets' },
-    { id:'upload', icon:'📁', th:'อัปโหลดไฟล์', en:'Upload File' },
-    { id:'history', icon:'🕐', th:'ประวัติการ Sync', en:'Sync History' },
-    { id:'guide', icon:'📋', th:'วิธีตั้งค่า', en:'Setup Guide' },
+    { id:'sheets',  icon:'📊', th:'Google Sheets',   en:'Google Sheets'  },
+    { id:'upload',  icon:'📁', th:'อัปโหลดไฟล์',    en:'Upload File'    },
+    { id:'sql',     icon:'🗄', th:'SQL Sync',         en:'SQL Sync'       },
+    { id:'history', icon:'🕐', th:'ประวัติการ Sync', en:'Sync History'   },
+    { id:'guide',   icon:'📋', th:'วิธีตั้งค่า',    en:'Setup Guide'    },
   ];
 
   const aliases = sheetType==='drugs' ? DRUG_ALIASES : SUP_ALIASES;
@@ -583,6 +702,122 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
                 </table>
               </div>
           }
+        </div>
+      )}
+
+      {/* ── SQL SYNC TAB ── */}
+      {tab==='sql' && (
+        <div>
+          {/* Sub-tab bar */}
+          <div style={{display:'flex',gap:0,marginBottom:16,borderRadius:'var(--r)',overflow:'hidden',border:'1px solid var(--border)'}}>
+            {[{id:'export',icon:'📤',th:'Export SQL',en:'Export SQL'},{id:'fixes',icon:'🔧',th:'Quick Fix',en:'Quick Fix'},{id:'snips',icon:'📋',th:'SQL Snippets',en:'SQL Snippets'}].map(s=>(
+              <button key={s.id} onClick={()=>setSqlSub(s.id)} style={{flex:1,padding:'10px 0',border:'none',cursor:'pointer',fontSize:13,fontWeight:700,
+                background:sqlSub===s.id?'var(--acc)':'var(--bg3)',color:sqlSub===s.id?'#fff':'var(--txt3)'}}>
+                {s.icon} {lang==='th'?s.th:s.en}
+              </button>
+            ))}
+          </div>
+
+          {/* EXPORT SQL */}
+          {sqlSub==='export' && (
+            <div>
+              <div className="card" style={{marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>📤 {L('Export ข้อมูลเป็น SQL','Export Data as SQL')}</div>
+                <div style={{fontSize:13,color:'var(--txt3)',marginBottom:14}}>
+                  {L('สร้าง SQL UPSERT จากข้อมูลปัจจุบัน สำหรับนำไปรันใน Supabase SQL Editor','Generate SQL UPSERT from current data — run it in your Supabase SQL Editor')}
+                </div>
+                <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
+                  <select className="input input-sm" value={sqlExportType} onChange={e=>{setSqlExportType(e.target.value);setSqlOutput('');}}>
+                    <option value="drugs">{L(`ยา (${drugs.length} รายการ)`,`Drugs (${drugs.length} items)`)}</option>
+                    <option value="suppliers">{L(`Supplier (${suppliers.length} ราย)`,`Suppliers (${suppliers.length} records)`)}</option>
+                  </select>
+                  <button className="btn btn-primary btn-sm" onClick={generateSqlExport}>⚙ {L('สร้าง SQL','Generate SQL')}</button>
+                  {sqlOutput && <>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>{navigator.clipboard?.writeText(sqlOutput);notify(L('คัดลอกแล้ว','Copied'),'ok');}}>📋 {L('คัดลอก','Copy')}</button>
+                    <button className="btn btn-ghost btn-sm" onClick={downloadSql}>⬇ .sql</button>
+                  </>}
+                </div>
+                {sqlOutput
+                  ? <textarea readOnly value={sqlOutput} style={{width:'100%',height:280,fontFamily:'monospace',fontSize:11,padding:12,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--r)',color:'var(--txt1)',resize:'vertical',boxSizing:'border-box'}} />
+                  : <div style={{textAlign:'center',padding:'28px 0',color:'var(--txt3)',fontSize:13}}>
+                      {L('กด "สร้าง SQL" เพื่อสร้าง script','Click "Generate SQL" to create the script')}
+                    </div>
+                }
+              </div>
+              <div className="card" style={{background:'var(--info-bg)',borderColor:'rgba(59,130,246,.3)'}}>
+                <div style={{fontWeight:700,fontSize:13,color:'var(--info)',marginBottom:8}}>💡 {L('วิธีใช้','How to use')}</div>
+                {[
+                  L('กด "สร้าง SQL" → คัดลอก SQL ที่สร้างได้','Click "Generate SQL" → copy the generated SQL'),
+                  L('ไปที่ Supabase Dashboard → SQL Editor','Go to Supabase Dashboard → SQL Editor'),
+                  L('วาง SQL แล้วกด Run (Ctrl+Enter)','Paste the SQL and press Run (Ctrl+Enter)'),
+                  L('ข้อมูลจะถูก UPSERT — ไม่ลบข้อมูลเดิม','Data will be UPSERTed — existing data not deleted'),
+                ].map((t,i)=><div key={i} style={{fontSize:12,marginBottom:4}}>{i+1}. {t}</div>)}
+              </div>
+            </div>
+          )}
+
+          {/* QUICK FIX */}
+          {sqlSub==='fixes' && (
+            <div>
+              <div style={{fontSize:13,color:'var(--txt3)',marginBottom:16}}>
+                {L('ตรวจสอบและแก้ไขข้อมูลอัตโนมัติ — กด Fix เพื่ออัปเดตทั้งในแอปและ Supabase','Detect and auto-fix data issues — click Fix to update both the app and Supabase')}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                {SQL_FIXES.map(fix=>{
+                  const count = fix.check();
+                  return (
+                    <div key={fix.id} className="card" style={{display:'flex',alignItems:'center',gap:16,padding:'14px 18px',
+                      borderColor:count>0?'rgba(234,179,8,.4)':'rgba(22,163,74,.3)',
+                      background:count>0?'rgba(234,179,8,.04)':'var(--ok-bg)'}}>
+                      <div style={{fontSize:28,flexShrink:0}}>{fix.icon}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,fontSize:13}}>{lang==='th'?fix.labelTH:fix.labelEN}</div>
+                        <div style={{fontSize:12,marginTop:4}}>
+                          {count>0
+                            ? <span style={{color:'rgba(161,98,7,1)',fontWeight:600}}>{L(`พบ ${count} รายการที่ต้องแก้ไข`,`${count} records need fixing`)}</span>
+                            : <span style={{color:'var(--ok)',fontWeight:600}}>✓ {L('ข้อมูลถูกต้องทั้งหมด','All records correct')}</span>}
+                        </div>
+                      </div>
+                      <button className={`btn btn-sm ${count>0?'btn-primary':'btn-ghost'}`}
+                        disabled={sqlRunning||count===0}
+                        onClick={async()=>{setSqlRunning(true);try{await fix.run();}finally{setSqlRunning(false);}}}>
+                        {sqlRunning?'⏳':count>0?`🔧 Fix (${count})`:'✓ OK'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* SQL SNIPPETS */}
+          {sqlSub==='snips' && (
+            <div>
+              <div style={{fontSize:13,color:'var(--txt3)',marginBottom:16}}>
+                {L('SQL Query สำเร็จรูป — คัดลอกไปรันใน Supabase SQL Editor ได้เลย','Ready-made SQL queries — copy and run in Supabase SQL Editor')}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {SQL_SNIPPETS.map((snip,i)=>(
+                  <div key={i} className="card" style={{padding:0,overflow:'hidden'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:'1px solid var(--border)',background:'var(--bg3)'}}>
+                      <span style={{fontWeight:700,fontSize:13}}>{lang==='th'?snip.labelTH:snip.labelEN}</span>
+                      <button className="btn btn-ghost btn-sm"
+                        onClick={()=>{navigator.clipboard?.writeText(snip.sql);notify(L('คัดลอกแล้ว','Copied'),'ok');}}>
+                        📋 {L('คัดลอก','Copy')}
+                      </button>
+                    </div>
+                    <pre style={{margin:0,padding:'12px 14px',fontSize:11,fontFamily:'monospace',overflow:'auto',color:'var(--txt2)',background:'var(--bg1)',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                      {snip.sql}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+              <div className="card" style={{marginTop:12,background:'var(--info-bg)',borderColor:'rgba(59,130,246,.3)'}}>
+                <div style={{fontWeight:700,fontSize:13,color:'var(--info)',marginBottom:6}}>📍 {L('วิธีรัน SQL','How to run SQL')}</div>
+                <div style={{fontSize:12,color:'var(--txt3)'}}>{L('ไปที่ Supabase Dashboard → SQL Editor → วาง SQL แล้วกด Run (Ctrl+Enter)','Go to Supabase Dashboard → SQL Editor → paste SQL and press Run (Ctrl+Enter)')}</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
