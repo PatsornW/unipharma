@@ -113,9 +113,13 @@
     async loadAll() {
       if (!enabled) return null;
       try {
-        var drugs = await selectAll("drugs");
-        var suppliers = await selectAll("suppliers");
-        var orders = await selectAll("purchase_orders");
+        // Fetch all three tables in parallel instead of sequentially
+        var results = await Promise.all([
+          selectAll("drugs"),
+          selectAll("suppliers"),
+          selectAll("purchase_orders"),
+        ]);
+        var drugs = results[0], suppliers = results[1], orders = results[2];
         if (!drugs.length && !suppliers.length && !orders.length) return null;
         // Normalize bilingual fields on load so EN mode never shows blank or drug-code as name
         drugs = drugs.map(function(d) {

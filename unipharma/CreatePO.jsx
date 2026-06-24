@@ -109,6 +109,12 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
       .slice(0, 20);
   }, [supplierDrugs, searchDrug]);
 
+  const drugMap = useMemo(() => {
+    const m = new Map();
+    drugs.forEach(d => m.set(d.code, d));
+    return m;
+  }, [drugs]);
+
   const units = ['เม็ด', 'แคปซูล', 'ซอฟเจล', 'ขวด (ml)', 'ขวด (pcs)', 'แผง', 'ชุด', 'กระป๋อง'];
 
   const addItem = drug => {
@@ -458,7 +464,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{lang === 'th' ? it.nameTH : (it.nameEN||it.nameTH)}</div>
                         <div style={{ fontSize: 11, color: 'var(--txt3)' }}>{it.code}</div>
                         {(() => {
-                          const drug = drugs.find(d => d.code === it.code);
+                          const drug = drugMap.get(it.code);
                           const deal = drug?.supplierDeals?.[supplierId];
                           if (!deal || !(deal.buyQty>0||deal.freeQty>0||deal.freeItems||deal.specialDiscount>0||deal.note)) return null;
                           const parts = [];

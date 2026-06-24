@@ -65,14 +65,23 @@ function Pagination({ page, total, perPage, onChange }) {
   );
 }
 
-/* ── Search Input ── */
+/* ── Search Input (debounced 200 ms) ── */
 function SearchInput({ value, onChange, placeholder = 'ค้นหา…' }) {
+  const [local, setLocal] = useState(value);
+  const timer = useRef(null);
+  useEffect(() => { setLocal(value); }, [value]);
+  const handle = e => {
+    const v = e.target.value;
+    setLocal(v);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => onChange(v), 200);
+  };
   return (
     <div className="search-bar">
       <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
-      <input className="input" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      <input className="input" value={local} onChange={handle} placeholder={placeholder} />
     </div>
   );
 }
