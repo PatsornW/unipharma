@@ -145,8 +145,14 @@ function parseDrugs(rows, map, cats) {
 }
 
 function parseSuppliers(rows, map) {
-  return rows.filter(r=>map.id&&r[map.id]&&!String(r[map.id]).startsWith('#')).map(r=>({
-    id:r[map.id]?.trim()||('SUP'+Date.now()),
+  return rows.filter(r => {
+    // Skip description rows (any mapped column starting with #)
+    if (map.id   && r[map.id]   && String(r[map.id]).startsWith('#'))   return false;
+    if (map.name && r[map.name] && String(r[map.name]).startsWith('#')) return false;
+    // Keep row if it has at least a name (id may be absent → auto-generated)
+    return !!(r[map.name]);
+  }).map((r, i) => ({
+    id:r[map.id]?.trim()||('SUP'+String(Date.now()+i).slice(-6)),
     code:'', name:r[map.name]||'', nameEN:r[map.nameEN]||r[map.name]||'',
     contact:r[map.contact]||'', phone:r[map.phone]||'', email:r[map.email]||'',
     taxId:r[map.taxId]||'', creditTerm:parseInt(r[map.creditTerm])||30,
