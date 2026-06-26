@@ -5,9 +5,9 @@ function App() {
   // One-time cleanup: drop the old bundled sample-data cache so the app shows
   // only real cloud-synced data (runs once per browser).
   try {
-    if (localStorage.getItem('uni_seed') !== 'clean1') {
-      ['uni_drugs', 'uni_suppliers', 'uni_orders'].forEach(k => localStorage.removeItem(k));
-      localStorage.setItem('uni_seed', 'clean1');
+    if (localStorage.getItem('uni_seed') !== 'real-data-v1') {
+      ['uni_drugs', 'uni_suppliers', 'uni_orders', 'uni_categories'].forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('uni_seed', 'real-data-v1');
     }
   } catch (e) {}
 

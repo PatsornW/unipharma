@@ -94,28 +94,31 @@ const DB = (() => {
             {id:'S1502',name:'สินค้าเบ็ดเตล็ด',nameEN:'Miscellaneous Items'}] }
   ];
 
-  // RAW: [code,nameTH,nameEN,unit,cat,sub,vat,costEx,sellEx,sPTN,sRAM,sCNX,minStk,supId,orders12m]
-  const R = [];
+  // Drug records loaded synchronously from drugs.json (faster than inline JS parse)
+  const R = (() => {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', 'drugs.json', false);
+      xhr.send();
+      return JSON.parse(xhr.responseText);
+    } catch(e) { console.warn('[DB] drugs.json load failed:', e); return []; }
+  })();
 
   const DRUGS = R.map(d=>{
-    const [code,nameTH,nameEN,unit,catId,subId,hasVatN,costEx,sellEx,sPTN,sRAM,sCNX,minStock,supplierId,orderCount]=d;
+    const [code,nameTH,nameEN,unit,catId,subId,hasVatN,costEx,sellEx,sPTN,sRAM,sCNX,minStock,supplierId,orderCount,cPTN,cRAM,cCNX]=d;
     const hasVat=!!hasVatN; const vatRate=hasVat?7:0;
     const costInc=hasVat?+(costEx*1.07).toFixed(2):costEx;
     const sellInc=hasVat?+(sellEx*1.07).toFixed(2):sellEx;
     const profitEx=+(sellEx-costEx).toFixed(2);
-    const profitMargin=+((profitEx/sellEx)*100).toFixed(1);
+    const profitMargin=sellEx>0?+((profitEx/sellEx)*100).toFixed(1):0;
     return {code,nameTH,nameEN,unit,catId,subId,hasVat,vatRate,costEx,costInc,sellEx,sellInc,profitEx,profitMargin,
-            stock:{PTN:sPTN,RAM:sRAM,CNX:sCNX},totalStock:sPTN+sRAM+sCNX,minStock,supplierId,orderCount,
-            lastOrdered:'2026-0'+(Math.floor(Math.random()*2)+5)+'-'+String(Math.floor(Math.random()*28)+1).padStart(2,'0')};
+            costByBranch:{PTN:cPTN||null,RAM:cRAM||null,CNX:cCNX||null},
+            stock:{PTN:sPTN,RAM:sRAM,CNX:sCNX},totalStock:sPTN+sRAM+sCNX,minStock,supplierId,orderCount};
   });
 
   const SUPPLIERS = [];
-
-  // Competitor pricing for price comparison [drugCode]: {supId: costEx, ...}
   const COMP_PRICES = {};
-
   const PURCHASE_ORDERS = [];
-
   const STOCK_MOVEMENTS = [];
 
   return {BRANCHES,CATEGORIES,DRUGS,SUPPLIERS,COMP_PRICES,PURCHASE_ORDERS,STOCK_MOVEMENTS};
