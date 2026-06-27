@@ -465,9 +465,11 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
                   {r.replacement && <div style={{ fontSize: '12px', color: 'var(--warn)', marginTop: '2px' }}>↪ {L('สินค้าทดแทน', 'Replacement')}: {r.replacement}</div>}
                   {r.supplierNote && <div style={{ fontSize: '12px', color: 'var(--txt3)', marginTop: '2px' }}>🏭 {r.supplierNote}</div>}
                 </div>
-                <button style={S.ghost} onClick={() => isEditing ? setEditingId(null) : startEdit(r)}>
-                  {isEditing ? L('ยกเลิก', 'Cancel') : L('จัดการ', 'Manage')}
-                </button>
+                {canManage && (
+                  <button style={S.ghost} onClick={() => isEditing ? setEditingId(null) : startEdit(r)}>
+                    {isEditing ? L('ยกเลิก', 'Cancel') : L('จัดการ', 'Manage')}
+                  </button>
+                )}
               </div>
 
               {/* Expanded edit panel */}
@@ -625,26 +627,22 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
         <button style={tabSt(tab === 'report')} onClick={() => setTab('report')}>
           📸 {L('แจ้งสินค้าหมด', 'Report')}
         </button>
-        {canManage && (
-          <button style={tabSt(tab === 'manage')} onClick={() => setTab('manage')}>
-            📋 {L('จัดการ', 'Manage')}
-            {activeReports.length > 0 && (
-              <span style={{ background: 'var(--err)', color: '#fff', borderRadius: '20px', fontSize: '10px', padding: '1px 6px', fontWeight: '700' }}>
-                {activeReports.length}
-              </span>
-            )}
-          </button>
-        )}
-        {canManage && (
-          <button style={tabSt(tab === 'history')} onClick={() => { setTab('history'); loadHistory(); }}>
-            📊 {L('สถิติ/ประวัติ', 'Statistics')}
-          </button>
-        )}
+        <button style={tabSt(tab === 'manage')} onClick={() => setTab('manage')}>
+          📋 {L('รายการ/จัดการ', 'List / Manage')}
+          {activeReports.length > 0 && (
+            <span style={{ background: 'var(--err)', color: '#fff', borderRadius: '20px', fontSize: '10px', padding: '1px 6px', fontWeight: '700' }}>
+              {activeReports.length}
+            </span>
+          )}
+        </button>
+        <button style={tabSt(tab === 'history')} onClick={() => { setTab('history'); loadHistory(); }}>
+          📊 {L('สถิติ/ประวัติ', 'Statistics')}
+        </button>
       </div>
 
       {tab === 'report' && ReportTab()}
-      {tab === 'manage' && canManage && ManageTab()}
-      {tab === 'history' && canManage && HistoryTab()}
+      {tab === 'manage' && ManageTab()}
+      {tab === 'history' && HistoryTab()}
     </div>
   );
 };
