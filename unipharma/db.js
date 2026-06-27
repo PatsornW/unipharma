@@ -119,8 +119,26 @@
 
     // Returns {drugs,suppliers,orders} from the cloud, or null if not
     // enabled / nothing stored yet.
+    // Fast path: if data was synced from Supabase within CACHE_TTL ms, return
+    // whatever is already in localStorage without hitting Supabase at all.
     async loadAll() {
       if (!enabled) return null;
+
+      var CACHE_TTL = 4 * 3600 * 1000; // 4 hours
+      try {
+        var ts = parseInt(localStorage.getItem('uni_cloud_ts') || '0', 10);
+        if (ts && (Date.now() - ts) < CACHE_TTL) {
+          var cd = JSON.parse(localStorage.getItem('uni_drugs') || '[]');
+          var cs = JSON.parse(localStorage.getItem('uni_suppliers') || '[]');
+          var co = JSON.parse(localStorage.getItem('uni_orders') || '[]');
+          if (cd.length || cs.length) {
+            var ageMin = Math.round((Date.now() - ts) / 60000);
+            console.info('[UNI_DB] cache hit — ' + cd.length + ' drugs (' + ageMin + 'min old)');
+            return { drugs: cd, suppliers: cs, orders: co };
+          }
+        }
+      } catch(e) { /* cache miss — fall through to cloud fetch */ }
+
       try {
         // Run startup SQL (warehouse auto-sync) BEFORE loading — so fetched data is already updated
         var startupSql = '';
@@ -160,6 +178,8 @@
         orders.sort(function (a, b) {
           return (b.poDate || "").localeCompare(a.poDate || "");
         });
+        // Mark timestamp so next load can skip Supabase if data is fresh
+        try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); } catch(e) {}
         return { drugs: drugs, suppliers: suppliers, orders: orders };
       } catch (e) {
         console.warn("[UNI_DB] loadAll failed:", e);
@@ -232,6 +252,7 @@
         var res = await client.from("drugs").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_cloud_ts'); } catch(e) {} // force re-fetch next load
     },
     async saveSuppliersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
@@ -239,6 +260,7 @@
         var res = await client.from("suppliers").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_cloud_ts'); } catch(e) {}
     },
     async saveOrdersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
@@ -246,6 +268,7 @@
         var res = await client.from("purchase_orders").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_cloud_ts'); } catch(e) {}
     },
 
     async logSync(source, kind, count) {

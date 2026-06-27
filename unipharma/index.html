@@ -201,7 +201,8 @@ select.input{cursor:pointer}
   <div id="boot-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f8fb;color:#0d3d7a;font-family:'Noto Sans Thai','Inter',sans-serif;gap:18px;text-align:center;padding:20px">
     <div id="boot-spinner" style="width:48px;height:48px;border:3px solid rgba(0,85,204,.18);border-top-color:#1177cc;border-radius:50%;animation:bootspin 1s linear infinite"></div>
     <div style="font-size:16px;font-weight:700;letter-spacing:.4px">UNIPHARMA</div>
-    <div id="boot-msg" style="font-size:13px;color:#5a7a95;max-width:340px;line-height:1.6">กำลังเตรียมระบบ… / Preparing the app…<br/><span style="font-size:11px;opacity:.8">กำลังโหลดข้อมูลยา 10,000+ รายการ ครั้งแรกใช้เวลา 30–60 วินาที<br/>Loading 10,000+ drug records, first load takes 30–60 seconds</span></div>
+    <div id="boot-msg" style="font-size:13px;color:#5a7a95;max-width:340px;line-height:1.6">กำลังเตรียมระบบ… / Preparing the app…<br/><span id="boot-sub" style="font-size:11px;opacity:.8">กำลังโหลดข้อมูลยา 10,000+ รายการ ครั้งแรกใช้เวลา 30–60 วินาที<br/>Loading 10,000+ drug records, first load takes 30–60 seconds</span></div>
+    <script>(function(){var ts=parseInt(localStorage.getItem('uni_cloud_ts')||'0',10),age=Date.now()-ts,el=document.getElementById('boot-sub');if(ts&&age<4*3600*1000&&el){var m=Math.round(age/60000);el.textContent=(m<1?'ข้อมูลล่าสุด (กำลังโหลดจาก cache)…':'ข้อมูลอัปเดตเมื่อ '+m+' นาทีที่แล้ว • ใช้ข้อมูล cache');}})();</script>
     <div id="boot-actions" style="display:none;flex-direction:column;gap:10px;margin-top:8px;align-items:center">
       <button id="boot-reset" style="padding:10px 20px;background:#1177cc;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">🔄 ล้าง cache แล้วโหลดใหม่ / Clear cache & reload</button>
       <div id="boot-err" style="font-size:11px;color:#b91c1c;max-width:340px;word-break:break-word;background:#fef2f2;padding:8px 12px;border-radius:8px;border:1px solid #fecaca;display:none"></div>
@@ -265,7 +266,7 @@ select.input{cursor:pointer}
   preloadAsync('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js');
   preloadAsync('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js');
 
-  var v = '?v=20260627d';
+  var v = '?v=20260627e';
   function loadJS(src, type){
     var el = document.createElement('script');
     el.src = src + v;
