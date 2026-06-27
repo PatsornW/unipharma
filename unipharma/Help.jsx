@@ -1,4 +1,4 @@
-// Help.jsx — Dynamic User Guide (Update-friendly structure)
+﻿// Help.jsx — Dynamic User Guide (Update-friendly structure)
 const { useState } = React;
 
 function HelpPage({ lang, L, perm = { role: 'admin' } }) {
@@ -39,8 +39,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
       steps_th:['ดูสต็อกแยกสาขา (PTN/RAM/CNX) พร้อมแถบสี','กรองดู \"ใกล้หมด\" เพื่อสั่งเร็ว','ดูประวัติการเคลื่อนไหวสต็อก (รับเข้า/จ่ายออก)'],
       steps_en:['View stock per branch with status bars','Filter \"Low Stock\" to see items needing order','View movement history (in/out)'] },
     { icon:'📸', th:'สินค้าหมด', en:'Out of Stock', color:'#d97706',
-      steps_th:['แท็บ \"แจ้งสินค้าหมด\": เลือกยาจาก dropdown (พิมพ์ค้นหาได้) ระบุจำนวนคงเหลือ แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นพร้อมกันแบบเรียลไทม์ พร้อมดูสถานะล่าสุด','แท็บ \"จัดการ\" (Manager/Admin): ดูรายการ + อัปเดตสถานะ (รอสั่ง/สั่งแล้ว/ไม่ได้สั่ง/Back Order/ของมาแล้ว)','ฝ่ายจัดซื้อสามารถใส่ข้อมูล ETA, วันที่ผู้จัดจำหน่ายแจ้ง, สินค้าทดแทน — Viewer เห็นได้','แท็บ \"สถิติ/ประวัติ\": ดูรายการย้อนหลังแยกตามสัปดาห์ พร้อมสรุปสถานะ','⚠️ ต้องรัน SQL migration (DataSync → SQL Sync → Snippets → อัปเกรดตาราง out_of_stock) ใน Supabase ครั้งเดียว'],
-      steps_en:['\"Report\" tab: select drug from searchable dropdown, enter remaining qty, attach photo + notes, then save','Syncs to cloud — everyone sees updates live with current status','\"Manage\" tab (Manager/Admin): update status per item (Pending/Ordered/Not Ordered/Back Order/Arrived)','Purchasing can fill ETA, supplier notification date, replacement product — Viewer can see these','\"Statistics\" tab: view history grouped by week with status summaries','⚠️ Run SQL migration once (DataSync → SQL Sync → Snippets → Upgrade out_of_stock table) in Supabase'] },
+      steps_th:['แท็บ \"แจ้งสินค้าหมด\" (ทุก Role): เลือกยาจาก dropdown (พิมพ์ค้นหาได้) ระบุจำนวนคงเหลือ แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นพร้อมกันแบบเรียลไทม์ พร้อมดูสถานะล่าสุด','แท็บ \"รายการ/จัดการ\" (ทุก Role ดูได้, Admin/Manager แก้ไขได้): สรุปนับ 5 สถานะ — คลิกการ์ดเพื่อกรองรายการ','Admin/Manager (ฝ่ายจัดซื้อ) กด \"จัดการ\" เพื่อใส่: สถานะ / ETA / วันที่ผู้จัดจำหน่ายแจ้ง / หมายเหตุ / สินค้าทดแทน — Viewer ดูข้อมูลเหล่านี้ได้','แท็บ \"สถิติ/ประวัติ\" (ทุก Role): ดูรายการย้อนหลังแยกตามสัปดาห์ พร้อมสรุปสถานะ','⚠️ ต้องรัน SQL migration ครั้งเดียว: DataSync → SQL Sync → Snippets → อัปเกรดตาราง out_of_stock'],
+      steps_en:['\"Report\" tab (all roles): select drug from searchable dropdown, enter remaining qty, attach photo + notes, then save','Syncs to cloud — everyone sees updates live with current status','\"List/Manage\" tab (all roles view; Admin/Manager edit): 5-status summary cards, click to filter list','Admin/Manager tap \"Manage\" to fill: Status / ETA / Supplier notify date / Notes / Replacement — Viewer can see all this','\"Statistics\" tab (all roles): view history grouped by week with status summaries','⚠️ Run SQL migration once: DataSync → SQL Sync → Snippets → Upgrade out_of_stock table'] },
     { icon:'📊', th:'รายงาน', en:'Reports', color:'var(--acc)',
       steps_th:['เลือกเดือน+สาขา ด้วย filter','ดูกราฟแนวโน้ม หมวดหมู่ เปรียบเทียบสาขา','แท็บ Top 10 / ไม่ได้สั่ง / Supplier Analysis'],
       steps_en:['Select month+branch with filters','View trend, category, branch comparison charts','Tabs: Top 10 / Rarely Ordered / Supplier Analysis'] },
@@ -186,6 +186,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                     {icon:'✅',text:L('จัดการผู้จัดจำหน่าย','Manage Suppliers')},
                     {icon:'✅',text:L('ซิงค์ข้อมูล (Import)','Data Sync/Import')},
                     {icon:'✅',text:L('ดูรายงาน','View Reports')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด + จัดการสถานะ (Out-of-Stock)','Report + Manage Out-of-Stock status')},
+                    {icon:'✅',text:L('ดูรายการ / สถิติ / ประวัติ Out-of-Stock','View OOS list, statistics & history')},
                   ]
                 },
                 {
@@ -198,6 +200,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                     {icon:'✅',text:L('จัดการสินค้า','Manage Products')},
                     {icon:'✅',text:L('จัดการผู้จัดจำหน่าย','Manage Suppliers')},
                     {icon:'✅',text:L('ดูรายงาน','View Reports')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด + จัดการสถานะ (Out-of-Stock)','Report + Manage Out-of-Stock status')},
+                    {icon:'✅',text:L('ดูรายการ / สถิติ / ประวัติ Out-of-Stock','View OOS list, statistics & history')},
                     {icon:'❌',text:L('ลบข้อมูล','Delete Data')},
                     {icon:'❌',text:L('ซิงค์ข้อมูล','Data Sync')},
                   ]
@@ -244,7 +248,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                 </thead>
                 <tbody>
                   {[
-                    {feat:L('ดู PO','View PO'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('ดู PO','View PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('สร้าง PO','Create PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('แก้ไข PO','Edit PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('ลบ PO','Delete PO'),a:'✅',m:'❌',v:'❌'},
@@ -252,7 +256,10 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                     {feat:L('จัดการสินค้า','Manage Products'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('จัดการผู้จัดจำหน่าย','Manage Suppliers'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('ซิงค์ข้อมูล','Data Sync'),a:'✅',m:'❌',v:'❌'},
-                    {feat:L('ดูรายงาน','View Reports'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('ดูรายงาน','View Reports'),a:'✅',m:'✅',v:'❌'},
+                    {feat:L('แจ้งสินค้าหมด','Report Out-of-Stock'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('จัดการสถานะ Out-of-Stock','Manage OOS Status'),a:'✅',m:'✅',v:'❌'},
+                    {feat:L('ดูรายการ/สถิติ Out-of-Stock','View OOS List & Stats'),a:'✅',m:'✅',v:'✅'},
                   ].map((row,i)=>(
                     <tr key={i} style={{borderBottom:`1px solid var(--bg3)`}}>
                       <td style={{padding:8}}>{row.feat}</td>
