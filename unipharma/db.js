@@ -90,6 +90,15 @@
     return out;
   }
 
+  // Normalize drug nameEN so EN mode never shows blank or raw drug code
+  function normDrugs(arr) {
+    return arr.map(function(d) {
+      var en = (d.nameEN || '').trim();
+      if (!en || en === d.code) en = (d.nameTH || d.code || '');
+      return en === d.nameEN ? d : Object.assign({}, d, { nameEN: en });
+    });
+  }
+
   async function selectAll(table) {
     // First, get the total count so we can fetch all pages in parallel
     // (10k+ rows over sequential requests is too slow on first load).
@@ -124,10 +133,13 @@
     async loadAll() {
       if (!enabled) return null;
 
-      // Only DRUGS are cached (10k+ master data, rarely changes).
-      // Suppliers and orders are always fetched fresh so edits by any user
-      // or the warehouse sync are immediately visible after refresh.
-      var DRUG_CACHE_TTL = 4 * 3600 * 1000;
+      // DRUGS: cached 24 h (master data, rarely changes).
+      // On every cache-hit we also query the remote drug COUNT in parallel with
+      // the supplier/order fetch — zero added latency. If the count differs from
+      // what we stored last time (e.g. after a bulk import), we refresh drug
+      // cache automatically so the new data appears on next reload.
+      // Suppliers + Orders: always fetched fresh.
+      var DRUG_CACHE_TTL = 24 * 3600 * 1000;
       var drugsFromCache = null;
       try {
         var ts = parseInt(localStorage.getItem('uni_cloud_ts') || '0', 10);
@@ -145,16 +157,28 @@
         var drugs, suppliers, orders;
 
         if (drugsFromCache) {
-          // Drug cache is fresh — fetch suppliers + orders from Supabase so changes show immediately
-          var freshParts = await Promise.all([
+          // Fetch suppliers + orders AND check drug count — all in parallel, no extra wait
+          var parallel = await Promise.all([
             selectAll("suppliers"),
             selectAll("purchase_orders"),
+            client.from("drugs").select("*", { count: "estimated", head: true }),
           ]);
-          drugs = drugsFromCache;
-          suppliers = freshParts[0];
-          orders = freshParts[1];
+          suppliers = parallel[0];
+          orders    = parallel[1];
+          var countRes    = parallel[2];
+          var remoteCount = (countRes && !countRes.error) ? (countRes.count || 0) : -1;
+          var cachedCount = parseInt(localStorage.getItem('uni_drug_count') || '0', 10);
+
+          if (remoteCount >= 0 && remoteCount !== cachedCount) {
+            // Count changed → bulk import or delete happened; refresh drug cache now
+            console.info('[UNI_DB] drug count changed (' + cachedCount + ' → ' + remoteCount + '), refreshing');
+            drugs = normDrugs(await selectAll("drugs"));
+            try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+          } else {
+            drugs = drugsFromCache;
+          }
         } else {
-          // Full fetch: run startup SQL first so warehouse stock is synced before we read drugs
+          // Full fetch: run startup SQL first so warehouse stock is synced before reading drugs
           var startupSql = '';
           try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
           if (startupSql) {
@@ -177,17 +201,10 @@
           ]);
           drugs = allParts[0]; suppliers = allParts[1]; orders = allParts[2];
           if (!drugs.length && !suppliers.length && !orders.length) return null;
-          // Normalize drug names so EN mode never shows blank or raw code
-          drugs = drugs.map(function(d) {
-            var en = (d.nameEN || '').trim();
-            if (!en || en === d.code) en = (d.nameTH || d.code || '');
-            return en === d.nameEN ? d : Object.assign({}, d, { nameEN: en });
-          });
-          // Mark drug cache timestamp for next load
-          try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); } catch(e) {}
+          drugs = normDrugs(drugs);
+          try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
         }
 
-        // Normalize supplier names (done every load so edits propagate)
         suppliers = suppliers.map(function(s) {
           var en = (s.nameEN || '').trim();
           return en ? s : Object.assign({}, s, { nameEN: (s.name || s.id || '') });
@@ -265,7 +282,7 @@
         var res = await client.from("drugs").upsert(c);
         if (res.error) throw res.error;
       }
-      try { localStorage.removeItem('uni_cloud_ts'); } catch(e) {} // force re-fetch next load
+      try { localStorage.removeItem('uni_cloud_ts'); localStorage.removeItem('uni_drug_count'); } catch(e) {}
     },
     async saveSuppliersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
