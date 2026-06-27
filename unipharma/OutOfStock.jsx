@@ -170,11 +170,14 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
     setEditingId(null);
     try {
       if (cloudOn && window.UNI_DB.updateOutOfStock) {
-        await window.UNI_DB.updateOutOfStock(r.id, updated);
-      } else {
+        const ok = await window.UNI_DB.updateOutOfStock(r.id, updated);
+        if (!ok) throw new Error('updateOutOfStock returned false');
+      }
+      // Always keep localStorage in sync (fallback stays current after refresh)
+      try {
         const stored = JSON.parse(localStorage.getItem('uni_out_of_stock') || '[]');
         localStorage.setItem('uni_out_of_stock', JSON.stringify(stored.map(x => x.id === r.id ? updated : x)));
-      }
+      } catch(e) {}
       notify(L('อัปเดตแล้ว ✓', 'Updated ✓'), 'ok');
     } catch (e) { notify(L('อัปเดตไม่สำเร็จ', 'Update failed'), 'err'); loadReports(); }
   };

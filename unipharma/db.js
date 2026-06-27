@@ -124,62 +124,75 @@
     async loadAll() {
       if (!enabled) return null;
 
-      var CACHE_TTL = 4 * 3600 * 1000; // 4 hours
+      // Only DRUGS are cached (10k+ master data, rarely changes).
+      // Suppliers and orders are always fetched fresh so edits by any user
+      // or the warehouse sync are immediately visible after refresh.
+      var DRUG_CACHE_TTL = 4 * 3600 * 1000;
+      var drugsFromCache = null;
       try {
         var ts = parseInt(localStorage.getItem('uni_cloud_ts') || '0', 10);
-        if (ts && (Date.now() - ts) < CACHE_TTL) {
+        if (ts && (Date.now() - ts) < DRUG_CACHE_TTL) {
           var cd = JSON.parse(localStorage.getItem('uni_drugs') || '[]');
-          var cs = JSON.parse(localStorage.getItem('uni_suppliers') || '[]');
-          var co = JSON.parse(localStorage.getItem('uni_orders') || '[]');
-          if (cd.length || cs.length) {
+          if (cd.length) {
             var ageMin = Math.round((Date.now() - ts) / 60000);
-            console.info('[UNI_DB] cache hit — ' + cd.length + ' drugs (' + ageMin + 'min old)');
-            return { drugs: cd, suppliers: cs, orders: co };
+            console.info('[UNI_DB] drug cache hit — ' + cd.length + ' drugs (' + ageMin + 'min old)');
+            drugsFromCache = cd;
           }
         }
-      } catch(e) { /* cache miss — fall through to cloud fetch */ }
+      } catch(e) { /* cache miss */ }
 
       try {
-        // Run startup SQL (warehouse auto-sync) BEFORE loading — so fetched data is already updated
-        var startupSql = '';
-        try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
-        if (startupSql) {
-          try {
-            var sr = await client.rpc('exec_sql', { sql: startupSql });
-            var status = sr.error ? ('error: ' + (sr.error.message || sr.error)) : 'ok';
-            try { localStorage.setItem('uni_startup_sql_last_run', new Date().toISOString()); localStorage.setItem('uni_startup_sql_last_status', status); } catch(e) {}
-            if (sr.error) console.warn('[UNI_DB] Startup SQL error:', sr.error);
-            else console.info('[UNI_DB] Startup SQL executed OK');
-          } catch(e) {
-            try { localStorage.setItem('uni_startup_sql_last_status', 'error: ' + (e.message || String(e))); } catch(_) {}
-            console.warn('[UNI_DB] Startup SQL failed (continuing):', e);
+        var drugs, suppliers, orders;
+
+        if (drugsFromCache) {
+          // Drug cache is fresh — fetch suppliers + orders from Supabase so changes show immediately
+          var freshParts = await Promise.all([
+            selectAll("suppliers"),
+            selectAll("purchase_orders"),
+          ]);
+          drugs = drugsFromCache;
+          suppliers = freshParts[0];
+          orders = freshParts[1];
+        } else {
+          // Full fetch: run startup SQL first so warehouse stock is synced before we read drugs
+          var startupSql = '';
+          try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
+          if (startupSql) {
+            try {
+              var sr = await client.rpc('exec_sql', { sql: startupSql });
+              var sqlStatus = sr.error ? ('error: ' + (sr.error.message || sr.error)) : 'ok';
+              try { localStorage.setItem('uni_startup_sql_last_run', new Date().toISOString()); localStorage.setItem('uni_startup_sql_last_status', sqlStatus); } catch(e) {}
+              if (sr.error) console.warn('[UNI_DB] Startup SQL error:', sr.error);
+              else console.info('[UNI_DB] Startup SQL executed OK');
+            } catch(e) {
+              try { localStorage.setItem('uni_startup_sql_last_status', 'error: ' + (e.message || String(e))); } catch(_) {}
+              console.warn('[UNI_DB] Startup SQL failed (continuing):', e);
+            }
           }
+
+          var allParts = await Promise.all([
+            selectAll("drugs"),
+            selectAll("suppliers"),
+            selectAll("purchase_orders"),
+          ]);
+          drugs = allParts[0]; suppliers = allParts[1]; orders = allParts[2];
+          if (!drugs.length && !suppliers.length && !orders.length) return null;
+          // Normalize drug names so EN mode never shows blank or raw code
+          drugs = drugs.map(function(d) {
+            var en = (d.nameEN || '').trim();
+            if (!en || en === d.code) en = (d.nameTH || d.code || '');
+            return en === d.nameEN ? d : Object.assign({}, d, { nameEN: en });
+          });
+          // Mark drug cache timestamp for next load
+          try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); } catch(e) {}
         }
 
-        // Fetch all three tables in parallel instead of sequentially
-        var results = await Promise.all([
-          selectAll("drugs"),
-          selectAll("suppliers"),
-          selectAll("purchase_orders"),
-        ]);
-        var drugs = results[0], suppliers = results[1], orders = results[2];
-        if (!drugs.length && !suppliers.length && !orders.length) return null;
-        // Normalize bilingual fields on load so EN mode never shows blank or drug-code as name
-        drugs = drugs.map(function(d) {
-          var en = (d.nameEN || '').trim();
-          if (!en || en === d.code) en = (d.nameTH || d.code || '');
-          return en === d.nameEN ? d : Object.assign({}, d, { nameEN: en });
-        });
+        // Normalize supplier names (done every load so edits propagate)
         suppliers = suppliers.map(function(s) {
           var en = (s.nameEN || '').trim();
           return en ? s : Object.assign({}, s, { nameEN: (s.name || s.id || '') });
         });
-        // newest POs first
-        orders.sort(function (a, b) {
-          return (b.poDate || "").localeCompare(a.poDate || "");
-        });
-        // Mark timestamp so next load can skip Supabase if data is fresh
-        try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); } catch(e) {}
+        orders.sort(function (a, b) { return (b.poDate || "").localeCompare(a.poDate || ""); });
         return { drugs: drugs, suppliers: suppliers, orders: orders };
       } catch (e) {
         console.warn("[UNI_DB] loadAll failed:", e);
