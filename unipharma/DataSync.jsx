@@ -462,6 +462,11 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
 
   const SQL_SNIPPETS = [
     {
+      labelTH: '⚙️ อัปเกรดตาราง out_of_stock (เพิ่ม status + data column)',
+      labelEN: '⚙️ Upgrade out_of_stock table (add status + data columns)',
+      sql: `-- รัน 1 ครั้งใน Supabase Dashboard SQL Editor\n-- เพิ่ม column ใหม่สำหรับระบบสถานะ Back Order / ETA\nALTER TABLE out_of_stock\n  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending',\n  ADD COLUMN IF NOT EXISTS data JSONB;\n\n-- อัปเดต status ของรายการเก่า (resolved → arrived)\nUPDATE out_of_stock\nSET status = CASE WHEN resolved_at IS NOT NULL THEN 'arrived' ELSE 'pending' END\nWHERE status IS NULL OR status = '';`,
+    },
+    {
       labelTH: 'แก้ nameEN ที่เป็น code ยา',
       labelEN: 'Fix nameEN equal to drug code',
       sql: `-- แก้ไข nameEN ที่เป็น code ยา ให้ใช้ nameTH แทน\nUPDATE drugs\nSET data = jsonb_set(data, '{nameEN}', data->'nameTH'),\n    name_en = data->>'nameTH'\nWHERE data->>'nameEN' = data->>'code'\n   OR data->>'nameEN' IS NULL\n   OR trim(data->>'nameEN') = '';`,

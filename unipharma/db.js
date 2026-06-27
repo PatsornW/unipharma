@@ -56,14 +56,23 @@
       notes: r.notes || "", image: r.image || null, reported_by: r.reportedBy || "",
       period_start: r.periodStart || null, created_at: r.createdAt,
       resolved_at: r.resolvedAt || null, resolved_by: r.resolvedBy || null,
+      status: r.status || "pending",
+      data: r,
     };
   }
   function oosFromRow(row) {
+    if (row.data && typeof row.data === "object" && row.data.id) {
+      var d = row.data;
+      return Object.assign({}, d, {
+        timestamp: new Date(d.createdAt || row.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+      });
+    }
     return {
       id: row.id, productCode: row.product_code, productName: row.product_name,
       notes: row.notes, image: row.image, reportedBy: row.reported_by,
       periodStart: row.period_start, createdAt: row.created_at,
       resolvedAt: row.resolved_at || null, resolvedBy: row.resolved_by || null,
+      status: row.resolved_at ? "arrived" : (row.status || "pending"),
       timestamp: new Date(row.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
     };
   }
@@ -268,6 +277,27 @@
       if (!enabled) return;
       try { await client.from("out_of_stock").delete().eq("id", id); }
       catch (e) { console.warn("[UNI_DB] deleteOutOfStock:", e); }
+    },
+    async updateOutOfStock(id, updatedReport) {
+      if (!enabled) return false;
+      try {
+        var res = await client.from("out_of_stock").update({
+          status: updatedReport.status || "pending",
+          resolved_at: updatedReport.resolvedAt || null,
+          resolved_by: updatedReport.resolvedBy || null,
+          data: updatedReport,
+        }).eq("id", id);
+        if (res.error) throw res.error;
+        return true;
+      } catch (e) { console.warn("[UNI_DB] updateOutOfStock:", e); return false; }
+    },
+    async loadOutOfStockAll() {
+      if (!enabled) return null;
+      try {
+        var res = await client.from("out_of_stock").select("*").order("created_at", { ascending: false });
+        if (res.error) throw res.error;
+        return (res.data || []).map(oosFromRow);
+      } catch (e) { console.warn("[UNI_DB] loadOutOfStockAll:", e); return null; }
     },
     // ---- Drug categories (shared master list) ----
     async loadCategories() {

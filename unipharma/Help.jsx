@@ -39,8 +39,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
       steps_th:['ดูสต็อกแยกสาขา (PTN/RAM/CNX) พร้อมแถบสี','กรองดู \"ใกล้หมด\" เพื่อสั่งเร็ว','ดูประวัติการเคลื่อนไหวสต็อก (รับเข้า/จ่ายออก)'],
       steps_en:['View stock per branch with status bars','Filter \"Low Stock\" to see items needing order','View movement history (in/out)'] },
     { icon:'📸', th:'สินค้าหมด', en:'Out of Stock', color:'#d97706',
-      steps_th:['แท็บ \"รายงาน\": พิมพ์รหัส/ชื่อยา (มีแนะนำอัตโนมัติ) แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นพร้อมกันแบบเรียลไทม์ ไม่ต้องรีเฟรช','รอบรายงาน 7 วัน (จ.–อา.) รีเซ็ตอัตโนมัติ','แท็บ \"แผนการสั่ง\" (Manager/Admin): ดูรายการที่ต้องสั่ง พร้อมรูปภาพ + สรุปสถิติ','สั่งซื้อแล้วกด \"สั่งแล้ว / ลบออกจากรายการ\" → รายการหายจากที่ต้องสั่ง แต่เก็บไว้เป็นสถิติ (สั่งแล้ว/แจ้งทั้งหมด)','⚠️ ต้องรัน database/out_of_stock.sql ใน Supabase ครั้งเดียวก่อนใช้แบบแชร์'],
-      steps_en:['\"Report\" tab: type code/name (auto-suggest), attach photo + notes, then save','Reports sync to the cloud — everyone sees them live, no refresh needed','7-day window (Mon–Sun) resets automatically','\"Dashboard\" tab (Manager/Admin): see items to reorder with photos + statistics','After ordering, tap \"Ordered / Remove from list\" → it leaves the active list but is kept as statistics (Ordered / Total reported)','⚠️ Run database/out_of_stock.sql in Supabase once to enable sharing'] },
+      steps_th:['แท็บ \"แจ้งสินค้าหมด\": เลือกยาจาก dropdown (พิมพ์ค้นหาได้) ระบุจำนวนคงเหลือ แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นพร้อมกันแบบเรียลไทม์ พร้อมดูสถานะล่าสุด','แท็บ \"จัดการ\" (Manager/Admin): ดูรายการ + อัปเดตสถานะ (รอสั่ง/สั่งแล้ว/ไม่ได้สั่ง/Back Order/ของมาแล้ว)','ฝ่ายจัดซื้อสามารถใส่ข้อมูล ETA, วันที่ผู้จัดจำหน่ายแจ้ง, สินค้าทดแทน — Viewer เห็นได้','แท็บ \"สถิติ/ประวัติ\": ดูรายการย้อนหลังแยกตามสัปดาห์ พร้อมสรุปสถานะ','⚠️ ต้องรัน SQL migration (DataSync → SQL Sync → Snippets → อัปเกรดตาราง out_of_stock) ใน Supabase ครั้งเดียว'],
+      steps_en:['\"Report\" tab: select drug from searchable dropdown, enter remaining qty, attach photo + notes, then save','Syncs to cloud — everyone sees updates live with current status','\"Manage\" tab (Manager/Admin): update status per item (Pending/Ordered/Not Ordered/Back Order/Arrived)','Purchasing can fill ETA, supplier notification date, replacement product — Viewer can see these','\"Statistics\" tab: view history grouped by week with status summaries','⚠️ Run SQL migration once (DataSync → SQL Sync → Snippets → Upgrade out_of_stock table) in Supabase'] },
     { icon:'📊', th:'รายงาน', en:'Reports', color:'var(--acc)',
       steps_th:['เลือกเดือน+สาขา ด้วย filter','ดูกราฟแนวโน้ม หมวดหมู่ เปรียบเทียบสาขา','แท็บ Top 10 / ไม่ได้สั่ง / Supplier Analysis'],
       steps_en:['Select month+branch with filters','View trend, category, branch comparison charts','Tabs: Top 10 / Rarely Ordered / Supplier Analysis'] },
@@ -205,11 +205,10 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
                 {
                   num:'3️⃣',
                   role:L('Viewer (ผู้ชมอย่างเดียว)','Viewer - Read-Only'),
-                  desc:L('เข้าถึงได้แค่ 2 หน้า: การสั่งซื้อ (ดูเท่านั้น) และ สินค้าหมด (ลงข้อมูลได้)','Access limited to 2 pages: Purchase Orders (view only) and Out of Stock (can submit)'),
+                  desc:L('เข้าถึงได้เฉพาะหน้า สินค้าหมด — แจ้งได้ + ดูสถานะการสั่งได้','Access limited to Out of Stock page only — can report and view ordering status'),
                   permissions:[
-                    {icon:'✅',text:L('ดู PO (อย่างเดียว)','View PO (only)')},
-                    {icon:'✅',text:L('แจ้งสินค้าหมด (ลงข้อมูล)','Report out-of-stock (submit)')},
-                    {icon:'❌',text:L('สร้าง/แก้ไข PO','Create/Edit PO')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด (ลงข้อมูล + ดูสถานะ)','Report out-of-stock (submit + view status)')},
+                    {icon:'❌',text:L('ดู/สร้าง/แก้ไข PO','View/Create/Edit PO')},
                     {icon:'❌',text:L('หน้าอื่น ๆ (ยา/ผู้จัดจำหน่าย/รายงาน ฯลฯ)','Other pages (drugs/suppliers/reports, etc.)')},
                     {icon:'❌',text:L('ลบข้อมูล / ซิงค์ข้อมูล','Delete / Data Sync')},
                   ]

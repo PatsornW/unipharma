@@ -215,10 +215,10 @@ function App() {
   };
   const roleLabel = { admin: L('ผู้ดูแลระบบ', 'Admin'), manager: L('ฝ่ายจัดซื้อ', 'Purchasing'), viewer: L('ดูอย่างเดียว', 'View-only') }[role] || role;
 
-  // Viewers may only reach the PO page (view-only) and Out of Stock (submit reports).
-  const VIEWER_PAGES = ['orders', 'out_of_stock'];
+  // Viewers may only access the Out of Stock report page.
+  const VIEWER_PAGES = ['out_of_stock'];
   const isViewer = role === 'viewer';
-  const homePage = isViewer ? 'orders' : 'dashboard';
+  const homePage = isViewer ? 'out_of_stock' : 'dashboard';
   const curPage = (isViewer && !VIEWER_PAGES.includes(page)) ? homePage : page;
   useEffect(() => {
     // Wait until auth is ready (role is known) before enforcing viewer redirect.

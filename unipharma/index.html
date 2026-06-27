@@ -256,33 +256,20 @@ select.input{cursor:pointer}
      files so the site always works. -->
 <script>
 (function(){
-  function loadBabelFallback(){
-    console.warn('[boot] app.bundle.js not found — falling back to in-browser Babel');
-    var v = '?v=20260626b';
-    function loadJS(src, type){
-      var el = document.createElement('script');
-      el.src = src + v;
-      if (type) el.type = type;
-      el.async = false;          // preserve execution order
-      document.body.appendChild(el);
-    }
-    var babel = document.createElement('script');
-    babel.src = 'https://unpkg.com/@babel/standalone@7.29.0/babel.min.js';
-    babel.crossOrigin = 'anonymous';
-    babel.async = false;
-    babel.onload = function(){
-      ['config.js','data.js','utils.js','db.js'].forEach(function(f){ loadJS(f); });
-      ['auth.jsx','components.jsx','Dashboard.jsx','Drugs.jsx','Orders.jsx',
-       'CreatePO.jsx','PODocument.jsx','Suppliers.jsx','Comparison.jsx',
-       'Stock.jsx','OutOfStock.jsx','Reports.jsx','Help.jsx','DataSync.jsx',
-       'CategoryManager.jsx','tweaks-panel.jsx','app.jsx'].forEach(function(f){ loadJS(f, 'text/babel'); });
-    };
-    document.head.appendChild(babel);
+  // Babel is loaded in <head>; load all source files directly.
+  var v = '?v=20260627a';
+  function loadJS(src, type){
+    var el = document.createElement('script');
+    el.src = src + v;
+    if (type) el.type = type;
+    el.async = false;
+    document.body.appendChild(el);
   }
-  var s = document.createElement('script');
-  s.src = 'app.bundle.js?v=20260626b';
-  s.onerror = loadBabelFallback;
-  document.body.appendChild(s);
+  ['config.js','data.js','utils.js','db.js'].forEach(function(f){ loadJS(f); });
+  ['auth.jsx','components.jsx','Dashboard.jsx','Drugs.jsx','Orders.jsx',
+   'CreatePO.jsx','PODocument.jsx','Suppliers.jsx','Comparison.jsx',
+   'Stock.jsx','OutOfStock.jsx','Reports.jsx','Help.jsx','DataSync.jsx',
+   'CategoryManager.jsx','tweaks-panel.jsx','app.jsx'].forEach(function(f){ loadJS(f, 'text/babel'); });
 })();
 </script>
 </body>
