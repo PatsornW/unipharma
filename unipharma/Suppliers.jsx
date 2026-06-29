@@ -13,6 +13,34 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, orders, notify
     return suppliers.filter(s => s.name.toLowerCase().includes(q) || s.nameEN.toLowerCase().includes(q) || s.contact.toLowerCase().includes(q));
   }, [suppliers, search]);
 
+  const exportSuppliers = () => {
+    if (!window.XLSX) { notify(L('กำลังโหลด SheetJS กรุณารอสักครู่', 'Loading SheetJS, please wait'), 'warn'); return; }
+    const rows = filtered.map(s => {
+      const stats = getSupStats(s);
+      return {
+        [L('รหัส', 'ID')]: s.id || '',
+        [L('ชื่อบริษัท (ไทย)', 'Name (TH)')]: s.name || '',
+        [L('ชื่อบริษัท (อังกฤษ)', 'Name (EN)')]: s.nameEN || '',
+        [L('ผู้ติดต่อ', 'Contact')]: s.contact || '',
+        [L('เบอร์โทร', 'Phone')]: s.phone || '',
+        [L('อีเมล', 'Email')]: s.email || '',
+        [L('เลขผู้เสียภาษี', 'Tax ID')]: s.taxId || '',
+        [L('เครดิต (วัน)', 'Credit (days)')]: s.creditTerm || 0,
+        [L('ระยะส่ง (วัน)', 'Delivery (days)')]: s.deliveryDays || 0,
+        [L('คะแนน', 'Rating')]: s.rating || '',
+        [L('ประเภท', 'Category')]: s.category || '',
+        [L('จำนวน PO', 'Order Count')]: stats.orderCount,
+        [L('ยอดซื้อรวม (฿)', 'Total Spend (฿)')]: stats.totalSpend,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:12},{wch:35},{wch:35},{wch:20},{wch:14},{wch:28},{wch:16},{wch:14},{wch:14},{wch:8},{wch:20},{wch:12},{wch:18}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, L('ผู้จัดจำหน่าย', 'Suppliers'));
+    XLSX.writeFile(wb, `suppliers_${new Date().toISOString().slice(0,10)}.xlsx`);
+    notify(L(`Export ${filtered.length} รายการ ✓`, `Exported ${filtered.length} items ✓`), 'ok');
+  };
+
   const getSupStats = sup => {
     const supOrders = orders.filter(o => o.supplierId === sup.id && o.status !== 'cancelled');
     const totalSpend = supOrders.reduce((s, o) => s + (o.grandTotal || 0), 0);
@@ -37,7 +65,10 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, orders, notify
           <div className="page-title">{L('ผู้จัดจำหน่าย', 'Suppliers')}</div>
           <div className="page-subtitle">{filtered.length} {L('ราย', 'suppliers')}</div>
         </div>
-        {perm.canWrite && <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ {L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')}</button>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {perm.canWrite && <button className="btn btn-ghost" onClick={exportSuppliers}>📥 {L('Export Excel', 'Export Excel')}</button>}
+          {perm.canWrite && <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ {L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')}</button>}
+        </div>
       </div>
 
       <div style={{ marginBottom: 16, maxWidth: 360 }}>

@@ -438,6 +438,12 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
         <span style={{ fontSize: '12px', color: 'var(--txt4)' }}>
           {L('อัปเดตอัตโนมัติทุก 60 วิ', 'Auto-refreshes every 60 s')}
         </span>
+        {canManage && (
+        <button onClick={() => exportOOS(reports, 'manage')}
+          style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--txt2)', cursor: 'pointer' }}>
+          📥 {L('Export Excel', 'Export Excel')}
+        </button>
+        )}
         <button onClick={() => loadReports()}
           style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--txt2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
           🔄 {L('รีเฟรช', 'Refresh')}
@@ -589,10 +595,40 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
   // ================================================================
   // HISTORY / STATISTICS TAB — admin / manager only
   // ================================================================
+  const exportOOS = (data, label) => {
+    if (!window.XLSX) { notify(L('กำลังโหลด SheetJS', 'Loading SheetJS'), 'warn'); return; }
+    const rows = data.map(r => ({
+      [L('วันที่แจ้ง', 'Reported At')]: r.timestamp ? new Date(r.timestamp).toLocaleString('th-TH') : '',
+      [L('รหัสสินค้า', 'Product Code')]: r.productCode || '',
+      [L('ชื่อสินค้า', 'Product Name')]: r.productName || '',
+      [L('สถานะ', 'Status')]: r.status || 'pending',
+      [L('คงเหลือ (ณ วันแจ้ง)', 'Qty at Report')]: r.qty ?? '',
+      [L('แจ้งโดย', 'Reported By')]: r.reportedBy || '',
+      [L('หมายเหตุ', 'Notes')]: r.notes || '',
+      'ETA': r.eta || '',
+      [L('วันกลับมา', 'Back-in-stock')]: r.backInStock || '',
+      [L('วันที่ Arrived', 'Arrived At')]: r.resolvedAt ? new Date(r.resolvedAt).toLocaleString('th-TH') : '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:20},{wch:14},{wch:40},{wch:12},{wch:14},{wch:15},{wch:35},{wch:12},{wch:14},{wch:20}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'OOS');
+    XLSX.writeFile(wb, `oos_${label}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    notify(L(`Export ${data.length} รายการ ✓`, `Exported ${data.length} items ✓`), 'ok');
+  };
+
   const HistoryTab = () => {
     const statusKeys = Object.keys(OOS_STATUS);
     return (
       <div>
+        {historyLoaded && allHistory.length > 0 && canManage && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+            <button onClick={() => exportOOS(allHistory, 'history')}
+              style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--txt2)', cursor: 'pointer' }}>
+              📥 {L('Export ประวัติทั้งหมด', 'Export All History')}
+            </button>
+          </div>
+        )}
         {!historyLoaded ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--txt4)' }}>
             {L('กำลังโหลด…', 'Loading…')}

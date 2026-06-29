@@ -64,6 +64,36 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortCol(col); setSortDir('asc'); }
   };
+
+  const exportDrugs = () => {
+    if (!window.XLSX) { notify(L('กำลังโหลด SheetJS กรุณารอสักครู่', 'Loading SheetJS, please wait'), 'warn'); return; }
+    const rows = filtered.map(d => ({
+      [L('รหัส', 'Code')]: d.code,
+      [L('ชื่อยา (ไทย)', 'Name (TH)')]: d.nameTH || '',
+      [L('ชื่อยา (อังกฤษ)', 'Name (EN)')]: d.nameEN || '',
+      [L('หน่วย', 'Unit')]: d.unit || '',
+      [L('หมวดหมู่', 'Category')]: d.catId || '',
+      [L('หมวดย่อย', 'Sub-category')]: d.subId || '',
+      'VAT': d.hasVat ? 'VAT 7%' : '-',
+      [L('ต้นทุน (฿)', 'Cost (฿)')]: d.costEx || 0,
+      [L('ราคาขาย ไม่รวม VAT (฿)', 'Sell excl. VAT (฿)')]: d.sellEx || 0,
+      [L('ราคาขาย รวม VAT (฿)', 'Sell incl. VAT (฿)')]: d.sellInc || 0,
+      [L('กำไร (%)', 'Margin (%)')]: d.profitMargin || 0,
+      [L('สต็อกรวม', 'Total Stock')]: d.totalStock || 0,
+      'Stock PTN': (d.stock && d.stock.PTN) || 0,
+      'Stock RAM': (d.stock && d.stock.RAM) || 0,
+      'Stock CNX': (d.stock && d.stock.CNX) || 0,
+      [L('สต็อกขั้นต่ำ', 'Min Stock')]: d.minStock || 0,
+      [L('ผู้จัดหาย', 'Supplier')]: (UTILS.getSupplier(d.supplierId) || {}).name || d.supplierId || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:10},{wch:40},{wch:40},{wch:12},{wch:20},{wch:20},{wch:10},{wch:14},{wch:22},{wch:22},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:30}];
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, L('ยา', 'Drugs'));
+    XLSX.writeFile(wb, `drugs_${new Date().toISOString().slice(0,10)}.xlsx`);
+    notify(L(`Export ${filtered.length} รายการ ✓`, `Exported ${filtered.length} items ✓`), 'ok');
+  };
   const SortIcon = ({ col }) => sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
 
   const saveDrug = useCallback(saved => {
@@ -116,6 +146,11 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
           <button className={`btn ${showPkg?'btn-primary':'btn-ghost'} btn-sm`} onClick={()=>setShowPkg(v=>!v)}>
             📦 {L('หน่วยบรรจุ','Packaging')} {showPkg?'ON':'OFF'}
           </button>
+          {perm.canWrite && (
+          <button className="btn btn-ghost" onClick={exportDrugs} title={L(`Export ${filtered.length} รายการ เป็น Excel`, `Export ${filtered.length} items to Excel`)}>
+            📥 {L('Export Excel', 'Export Excel')}
+          </button>
+          )}
           {perm.canWrite && (
           <button className="btn btn-ghost" onClick={() => setShowCatMgr(true)}>
             🏷️ {L('จัดการหมวดหมู่', 'Categories')}

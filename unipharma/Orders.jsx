@@ -52,6 +52,26 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
   const statusNextMap = { draft: 'pending', pending: 'approved', approved: 'completed' };
   const statusNextLabel = { draft: L('ส่งอนุมัติ', 'Submit'), pending: L('อนุมัติ', 'Approve'), approved: L('ยืนยันรับ', 'Confirm') };
 
+  const exportOrders = () => {
+    if (!window.XLSX) { notify(L('กำลังโหลด SheetJS กรุณารอสักครู่', 'Loading SheetJS, please wait'), 'warn'); return; }
+    const rows = filtered.map(o => ({
+      [L('เลข PO', 'PO Number')]: o.poNumber || '',
+      [L('สาขา', 'Branch')]: o.branch || '',
+      [L('ผู้จัดหาย', 'Supplier')]: (UTILS.getSupplier(o.supplierId) || {}).name || o.supplierId || '',
+      [L('วันที่สั่ง', 'PO Date')]: o.poDate || '',
+      [L('สถานะ', 'Status')]: o.status || '',
+      [L('ยอดรวม (฿)', 'Grand Total (฿)')]: o.grandTotal || 0,
+      [L('จำนวนรายการ', 'Item Count')]: (o.items || []).length,
+      [L('หมายเหตุ', 'Notes')]: o.notes || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{wch:16},{wch:10},{wch:35},{wch:12},{wch:12},{wch:16},{wch:14},{wch:30}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, L('ใบสั่งซื้อ', 'Orders'));
+    XLSX.writeFile(wb, `orders_${new Date().toISOString().slice(0,10)}.xlsx`);
+    notify(L(`Export ${filtered.length} รายการ ✓`, `Exported ${filtered.length} items ✓`), 'ok');
+  };
+
   return (
     <div className="page">
       <div className="page-header">
@@ -59,11 +79,18 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
           <div className="page-title">{L('การสั่งซื้อ', 'Purchase Orders')}</div>
           <div className="page-subtitle">{filtered.length} {L('รายการ · ยอดรวม', 'orders · Total')} ฿{UTILS.fmt(totalSpend, 0)}</div>
         </div>
-        {perm.canWrite && (
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + {L('สร้างใบสั่งซื้อ', 'New PO')}
-        </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {perm.canWrite && (
+          <button className="btn btn-ghost" onClick={exportOrders} title={L(`Export ${filtered.length} รายการ`, `Export ${filtered.length} orders`)}>
+            📥 {L('Export Excel', 'Export Excel')}
+          </button>
+          )}
+          {perm.canWrite && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            + {L('สร้างใบสั่งซื้อ', 'New PO')}
+          </button>
+          )}
+        </div>
       </div>
 
       {/* Summary Chips */}
