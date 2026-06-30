@@ -1,5 +1,5 @@
 // Drugs.jsx — Drug Database Page
-const { useState, useMemo, useCallback } = React;
+const { useState, useMemo, useCallback, useEffect } = React;
 
 const PER_PAGE = 50;
 // Created once at module level — Intl.Collator construction is expensive
@@ -19,9 +19,30 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const [showPkg, setShowPkg] = useState(false);
   const [expandedCode, setExpandedCode] = useState(null);
   const [showCatMgr, setShowCatMgr] = useState(false);
+  const [cwStock, setCwStock] = useState({});
+  const [cwSyncedAt, setCwSyncedAt] = useState(null);
 
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
+
+  // Load CW Pharma stock data (cwpharma_stock_test) on mount
+  useEffect(() => {
+    const cfg = window.UNI_CONFIG || {};
+    const url = (cfg.SUPABASE_URL || '').trim();
+    const key = (cfg.SUPABASE_ANON_KEY || '').trim();
+    if (!url || !key || !window.supabase) return;
+    const sb = window.supabase.createClient(url, key);
+    sb.from('cwpharma_stock_test')
+      .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+      .limit(15000)
+      .then(({ data, error }) => {
+        if (error || !data || !data.length) return;
+        const map = {};
+        data.forEach(r => { map[r.code] = r; });
+        setCwStock(map);
+        setCwSyncedAt(data[0].synced_at);
+      });
+  }, []);
 
   // Count items available per branch (stock > 0)
   const branchCounts = useMemo(() => {
@@ -137,9 +158,14 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       <div className="page-header">
         <div>
           <div className="page-title">{L('ฐานข้อมูลยา', 'Drug Database')}</div>
-          <div className="page-subtitle">
-            {L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('จาก', 'of')} {drugs.length.toLocaleString()} {L('รายการ', 'items')}
-            {branchFilter && ` · ${lang === 'th' ? (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).name : (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).nameEN}`}
+          <div className="page-subtitle" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span>{L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('จาก', 'of')} {drugs.length.toLocaleString()} {L('รายการ', 'items')}
+            {branchFilter && ` · ${lang === 'th' ? (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).name : (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).nameEN}`}</span>
+            {cwSyncedAt && (
+              <span style={{ fontSize:11, background:'var(--ok-bg)', color:'var(--ok)', borderRadius:99, padding:'1px 9px', fontWeight:500 }}>
+                ⟳ CW {new Date(cwSyncedAt).toLocaleString('th-TH', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -253,7 +279,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                 <ColHead col="costEx">{L('ต้นทุน', 'Cost')}{branchFilter ? ` [${branchFilter}]` : ''}</ColHead>
                 <ColHead col="sellEx">{L('ราคาขาย', 'Sell Price')}</ColHead>
                 <ColHead col="profitMargin">{L('กำไร', 'Profit')}</ColHead>
-                <ColHead col="totalStock">{L('สต็อกรวม', 'Total Stock')}</ColHead>
+                <ColHead col="totalStock">{Object.keys(cwStock).length ? L('Stock CW (3 สาขา)', 'Stock CW (3 branches)') : L('สต็อกรวม', 'Total Stock')}</ColHead>
                 <th style={{ textAlign: 'center' }}>{L('จัดการ', 'Action')}</th>
               </tr>
             </thead>
@@ -301,11 +327,19 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                           : <span className="badge" style={{ background: 'var(--bg4)', color: 'var(--txt3)' }}>-</span>}
                       </td>
                       <td className="tbl-num">
-                        <div style={{ fontWeight: 600 }}>{UTILS.fmt(getCost(d, branchFilter))} ฿</div>
-                        {branchFilter && d.costByBranch?.[branchFilter] != null && (
-                          <div style={{ fontSize: 10, color: 'var(--acc2)' }}>≠ {UTILS.fmt(d.costEx)} ฿</div>
+                        {d.hasVat ? (
+                          <>
+                            <div style={{ fontWeight: 600 }}>{UTILS.fmt(d.costInc)} ฿</div>
+                            <div style={{ fontSize: 10, color: 'var(--txt3)' }}>ไม่รวม VAT {UTILS.fmt(getCost(d, branchFilter))} ฿</div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontWeight: 600 }}>{UTILS.fmt(getCost(d, branchFilter))} ฿</div>
+                            {branchFilter && d.costByBranch?.[branchFilter] != null && (
+                              <div style={{ fontSize: 10, color: 'var(--acc2)' }}>≠ {UTILS.fmt(d.costEx)} ฿</div>
+                            )}
+                          </>
                         )}
-                        {d.hasVat && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>+VAT</div>}
                       </td>
                       <td className="tbl-num">
                         {d.hasVat
@@ -318,24 +352,49 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                         <div style={{ fontSize: 10, color: 'var(--txt3)' }}>{d.profitMargin}%</div>
                       </td>
                       <td>
-                        {branchFilter ? (
-                          <span style={{ color: (d.stock?.[branchFilter]||0) <= d.minStock ? 'var(--err)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
-                            {(d.stock?.[branchFilter]||0).toLocaleString()}
-                          </span>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <span style={{ color: ss === 'err' ? 'var(--err)' : ss === 'warn' ? 'var(--warn)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
-                              {d.totalStock.toLocaleString()}
+                        {(() => {
+                          const cw = cwStock[d.code];
+                          if (cw) {
+                            const brs = [
+                              { id: 'PTN', val: cw.stock_00 ?? 0 },
+                              { id: 'RAM', val: cw.stock_01 ?? 0 },
+                              { id: 'CNX', val: cw.stock_02 ?? 0 },
+                            ];
+                            return (
+                              <div style={{ display:'flex', gap:3 }}>
+                                {brs.map(b => (
+                                  <span key={b.id} style={{
+                                    display:'inline-flex', flexDirection:'column', alignItems:'center',
+                                    minWidth:34, background: b.val > 10 ? 'var(--ok-bg)' : b.val > 0 ? 'var(--warn-bg)' : 'var(--err-bg)',
+                                    borderRadius:6, padding:'2px 3px', gap:0,
+                                  }}>
+                                    <span style={{ fontSize:9, color:'var(--txt3)', fontWeight:600 }}>{b.id}</span>
+                                    <span style={{ fontSize:12, fontWeight:700, color: b.val > 10 ? 'var(--ok)' : b.val > 0 ? 'var(--warn)' : 'var(--err)' }}>{b.val}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                          if (branchFilter) return (
+                            <span style={{ color:(d.stock?.[branchFilter]||0)<=d.minStock?'var(--err)':'var(--ok)', fontWeight:700, fontSize:13 }}>
+                              {(d.stock?.[branchFilter]||0).toLocaleString()}
                             </span>
-                            <div style={{ display: 'flex', gap: 3, fontSize: 10 }}>
-                              {DB.BRANCHES.map(br => (
-                                <span key={br.id} style={{ color: d.stock[br.id] <= d.minStock ? 'var(--err)' : 'var(--txt4)' }}>
-                                  {br.id}:{d.stock[br.id]}
-                                </span>
-                              ))}
+                          );
+                          return (
+                            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                              <span style={{ color:ss==='err'?'var(--err)':ss==='warn'?'var(--warn)':'var(--ok)', fontWeight:700, fontSize:13 }}>
+                                {d.totalStock.toLocaleString()}
+                              </span>
+                              <div style={{ display:'flex', gap:3, fontSize:10 }}>
+                                {DB.BRANCHES.map(br => (
+                                  <span key={br.id} style={{ color:d.stock[br.id]<=d.minStock?'var(--err)':'var(--txt4)' }}>
+                                    {br.id}:{d.stock[br.id]}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </td>
                       <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         {perm.canWrite ? (
@@ -427,6 +486,38 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                                       </div>
                                     );
                                   })}
+                                </div>
+                              );
+                            })()}
+                            {(() => {
+                              const cw = cwStock[d.code];
+                              if (!cw) return null;
+                              const brs = [
+                                { id:'PTN', stock:cw.stock_00??0, cost:cw.cost_00??0, sell:cw.sell_00??0 },
+                                { id:'RAM', stock:cw.stock_01??0, cost:cw.cost_01??0, sell:cw.sell_01??0 },
+                                { id:'CNX', stock:cw.stock_02??0, cost:cw.cost_02??0, sell:cw.sell_02??0 },
+                              ];
+                              return (
+                                <div>
+                                  <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:6, fontWeight:600 }}>
+                                    🏪 {L('ข้อมูล CW Pharma', 'CW Pharma Data')}
+                                    <span style={{ fontSize:10, color:'var(--txt4)', marginLeft:6, fontWeight:400 }}>
+                                      {L('ขายแล้ว', 'Sold')} {(cw.qty_sold||0).toLocaleString()} {L('ชิ้น/ปี', 'pcs/yr')}
+                                    </span>
+                                  </div>
+                                  <div style={{ display:'flex', gap:8 }}>
+                                    {brs.map(b => (
+                                      <div key={b.id} style={{ background:'var(--bg4)', borderRadius:8, padding:'6px 10px', minWidth:76 }}>
+                                        <div style={{ fontSize:10, fontWeight:700, color:'var(--acc2)', marginBottom:4 }}>{b.id}</div>
+                                        <div style={{ fontSize:11, marginBottom:2 }}>
+                                          {L('คงเหลือ','Stock')}{' '}
+                                          <b style={{ color:b.stock>10?'var(--ok)':b.stock>0?'var(--warn)':'var(--err)' }}>{b.stock}</b>
+                                        </div>
+                                        {b.cost>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ต้นทุน','Cost')} <b>{UTILS.fmt(b.cost)} ฿</b></div>}
+                                        {b.sell>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ราคาขาย','Sell')} <b>{UTILS.fmt(b.sell)} ฿</b></div>}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               );
                             })()}

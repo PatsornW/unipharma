@@ -24,9 +24,28 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
   const [createdBy, setCreatedBy] = useState(() => editPO?.createdBy || '');
   const [errors, setErrors] = useState({});
   const [priceHist, setPriceHist] = useState({}); // {[code]: {min, avg, count, lastDate, lastPO}}
+  const [cwStock, setCwStock] = useState({});
   // Prevent auto-fill effects from overwriting loaded edit values on first mount
   const didInit = useRef(false);
   useEffect(() => { didInit.current = true; }, []);
+
+  // Load CW Pharma stock data on mount
+  useEffect(() => {
+    const cfg = window.UNI_CONFIG || {};
+    const url = (cfg.SUPABASE_URL || '').trim();
+    const key = (cfg.SUPABASE_ANON_KEY || '').trim();
+    if (!url || !key || !window.supabase) return;
+    const sb = window.supabase.createClient(url, key);
+    sb.from('cwpharma_stock_test')
+      .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02')
+      .limit(15000)
+      .then(({ data, error }) => {
+        if (error || !data || !data.length) return;
+        const map = {};
+        data.forEach(r => { map[r.code] = r; });
+        setCwStock(map);
+      });
+  }, []);
 
   const supplier = useMemo(() => suppliers.find(s => s.id === supplierId), [suppliers, supplierId]);
 
@@ -437,8 +456,23 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         <span style={{ marginLeft: 8, fontSize: 13 }}>{lang === 'th' ? d.nameTH : (d.nameEN||d.nameTH)}</span>
                       </div>
                       <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--txt3)' }}>
-                        <div>ต้นทุน ฿{UTILS.fmt(d.costEx)}</div>
-                        <div>สต็อก {d.stock[branch] || 0}</div>
+                        <div style={{ fontWeight:600, color:'var(--txt)' }}>฿{UTILS.fmt(d.vatRate > 0 ? d.costEx * (1 + d.vatRate / 100) : d.costEx)}{d.vatRate > 0 ? ' (รวม VAT)' : ''}</div>
+                        {d.vatRate > 0 && <div style={{ fontSize:10, color:'var(--txt4)' }}>ไม่รวม VAT ฿{UTILS.fmt(d.costEx)}</div>}
+                        {(() => {
+                          const cw = cwStock[d.code];
+                          if (!cw) return <div>สต็อก {d.stock[branch] || 0}</div>;
+                          return (
+                            <div style={{ display:'flex', gap:3, marginTop:2, justifyContent:'flex-end' }}>
+                              {[['PTN',cw.stock_00??0],['RAM',cw.stock_01??0],['CNX',cw.stock_02??0]].map(([id,val]) => (
+                                <span key={id} style={{ fontSize:10, padding:'1px 4px', borderRadius:4,
+                                  background: id===branch?(val>0?'var(--ok-bg)':'var(--err-bg)'):'var(--bg3)',
+                                  color: val>0?'var(--ok)':'var(--err)', fontWeight: id===branch?700:400 }}>
+                                  {id}:{val}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -489,6 +523,36 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                           return (
                             <div style={{ fontSize:10, color:'var(--ok)', background:'var(--ok-bg)', border:'1px solid rgba(22,163,74,.25)', borderRadius:4, padding:'2px 7px', marginTop:4, lineHeight:1.5 }}>
                               🎁 {parts.join(' · ')}
+                            </div>
+                          );
+                        })()}
+                        {(() => {
+                          const cw = cwStock[it.code];
+                          if (!cw) return null;
+                          const stockMap = { PTN:'stock_00', RAM:'stock_01', CNX:'stock_02' };
+                          const costMap  = { PTN:'cost_00',  RAM:'cost_01',  CNX:'cost_02'  };
+                          const poPrice  = parseFloat(it.unitPrice) || 0;
+                          const cwCost   = cw[costMap[branch]] || 0;
+                          const diffPct  = poPrice > 0 && cwCost > 0 ? ((poPrice - cwCost) / cwCost * 100) : null;
+                          return (
+                            <div style={{ marginTop:5, padding:'4px 8px', background:'var(--bg3)', borderRadius:6, fontSize:11, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+                              <span style={{ color:'var(--txt3)', fontWeight:600, fontSize:10 }}>CW</span>
+                              {[['PTN','stock_00'],['RAM','stock_01'],['CNX','stock_02']].map(([id,key]) => {
+                                const val = cw[key] ?? 0;
+                                const isCur = id === branch;
+                                return (
+                                  <span key={id} style={{ display:'inline-flex', gap:2, alignItems:'center' }}>
+                                    <span style={{ color: isCur?'var(--acc2)':'var(--txt4)', fontSize:10, fontWeight: isCur?700:400 }}>{id}</span>
+                                    <span style={{ fontWeight:700, color: val>10?'var(--ok)':val>0?'var(--warn)':'var(--err)' }}>{val}</span>
+                                  </span>
+                                );
+                              })}
+                              {diffPct !== null && (
+                                <span style={{ marginLeft:'auto', fontSize:10, fontWeight:600,
+                                  color: diffPct>5?'var(--warn)':diffPct<-5?'var(--ok)':'var(--txt3)' }}>
+                                  {diffPct>0?`+${diffPct.toFixed(1)}%`:`${diffPct.toFixed(1)}%`} vs CW ฿{UTILS.fmt(cwCost)}
+                                </span>
+                              )}
                             </div>
                           );
                         })()}
