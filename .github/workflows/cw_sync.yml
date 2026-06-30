@@ -1,0 +1,45 @@
+name: CW Pharma Auto Sync
+
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 02:00 Thailand time (UTC+7) every night
+  workflow_dispatch:         # allow manual run from GitHub UI → Actions tab
+
+jobs:
+  cw-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python packages
+        run: pip install playwright pandas requests openpyxl
+
+      - name: Install Playwright browsers + system deps
+        run: playwright install chromium --with-deps
+
+      - name: Install Xvfb (virtual display for headful browser)
+        run: sudo apt-get install -y xvfb
+
+      - name: Run CW Pharma sync
+        env:
+          CW_URL:        ${{ secrets.CW_URL }}
+          CW_USERNAME:   ${{ secrets.CW_USERNAME }}
+          CW_PASSWORD:   ${{ secrets.CW_PASSWORD }}
+          SUPABASE_KEY:  ${{ secrets.SUPABASE_KEY }}
+        run: xvfb-run --auto-servernum python scripts/cw_sync_cloud.py
+
+      - name: Upload error artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-error-run-${{ github.run_number }}
+          path: /tmp/cw_sync/
+          retention-days: 7
