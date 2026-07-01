@@ -49,8 +49,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
   // 🎯 EDIT HERE: Update data requirements
   const REQUIRED_DATA = [
     { th:'💊 ฐานข้อมูลยา', en:'💊 Drug Database',
-      current_th:'83 ตัวอย่าง', current_en:'83 sample',
-      needed_th:'10,258 รายการ', needed_en:'10,258 items',
+      current_th:'10,263 รายการ ✓', current_en:'10,263 items ✓',
+      needed_th:'10,263 รายการ (นำเข้าแล้ว)', needed_en:'10,263 items (imported)',
       fields:[['รหัสสินค้า','Code'],['ชื่อไทย','Name TH'],['ชื่ออังกฤษ','Name EN'],['หน่วย','Unit'],['หมวดหมู่','Category'],['หมวดย่อย','Sub-category (ใหม่)'],['VAT','Has VAT'],['ต้นทุน','Cost'],['ราคาขาย','Sell'],['สต็อก PTN/RAM/CNX','Stock'],['สต็อกขั้นต่ำ','Min Stock'],['ผู้จัดจำหน่าย','Supplier'],['หน่วยบรรจุ','Packaging']] },
     { th:'🏭 ผู้จัดจำหน่าย', en:'🏭 Suppliers',
       current_th:'10 ราย', current_en:'10',
@@ -64,7 +64,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
 
   // 🎯 EDIT HERE: Update next steps
   const NEXT_STEPS = [
-    { priority:'🔴', icon:'💊', th:'นำเข้าฐานข้อมูลยา 10,258 รายการ', en:'Import 10,258 drugs' },
+    { priority:'🟢', icon:'💊', th:'นำเข้าฐานข้อมูลยา 10,263 รายการ (เสร็จแล้ว ✓)', en:'Import drugs — done ✓ (10,263 items)' },
     { priority:'🔴', icon:'🏭', th:'นำเข้าผู้จัดจำหน่าย 410 ราย + ราคา + ยา', en:'Import 410 suppliers + pricing' },
     { priority:'🟡', icon:'📦', th:'บันทึกสต็อกจริงทั้ง 3 สาขา', en:'Record real stock all branches' },
     { priority:'🟡', icon:'🎁', th:'ตั้งค่าโปรโมชั่น Supplier', en:'Set up supplier promotions' },
@@ -114,7 +114,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
               {[
                 {icon:'✅',th:'พร้อมใช้งานทันที',en:'Ready to use'},
-                {icon:'💊',th:'ข้อมูลตัวอย่าง 83 ยา',en:'83 sample drugs'},
+                {icon:'💊',th:'ข้อมูลยาจริง 10,263 รายการ',en:'10,263 real drugs'},
                 {icon:'🏭',th:'10 ผู้จัดจำหน่าย',en:'10 suppliers'},
                 {icon:'🇹🇭/🇺🇸',th:'2 ภาษา (ไทย/อังกฤษ)',en:'2 languages'},
                 {icon:'🌓',th:'โหมดมืด/สว่าง',en:'Dark/Light'},
