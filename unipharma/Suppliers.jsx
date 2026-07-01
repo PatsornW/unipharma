@@ -180,7 +180,10 @@ function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
               <td className="tbl-num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--acc2)' }}>
                 {UTILS.fmt(sup.drugPrices?.[d.code] ?? d.costEx)} ฿
               </td>
-              <td className="tbl-num" style={{ fontSize: 12 }}>{UTILS.fmt(d.sellEx)} ฿</td>
+              <td className="tbl-num" style={{ fontSize: 12 }}>
+                <div style={{ fontWeight: 600 }}>{UTILS.fmt(d.hasVat ? d.sellInc : d.sellEx)} ฿</div>
+                {d.hasVat && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>ไม่รวม VAT {UTILS.fmt(d.sellEx)} ฿</div>}
+              </td>
             </tr>
           ))}</tbody>
         </table>
@@ -358,7 +361,10 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
                         onChange={e => setDrugPrice(code, e.target.value)}
                         style={{ width: 90, textAlign: 'right' }} />
                     </td>
-                    <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--txt3)' }}>฿{UTILS.fmt(drug.sellEx)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{UTILS.fmt(drug.hasVat ? drug.sellInc : drug.sellEx)} ฿</div>
+                      {drug.hasVat && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>ไม่รวม VAT {UTILS.fmt(drug.sellEx)} ฿</div>}
+                    </td>
                     <td>
                       <button className="btn-icon" onClick={() => removeDrug(code)} style={{ color: 'var(--err)', fontSize: 14 }}>✕</button>
                     </td>
