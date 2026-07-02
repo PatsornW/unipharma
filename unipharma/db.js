@@ -83,6 +83,44 @@
     return { id: row.id, name: row.name_th, nameEN: row.name_en, color: row.color, subs: row.subs || [] };
   }
 
+  // ── IndexedDB helpers for large data (drugs cache ~15 MB, too big for localStorage) ──
+  var _idb = null;
+  function openIdb() {
+    if (_idb) return Promise.resolve(_idb);
+    return new Promise(function(resolve) {
+      try {
+        var req = indexedDB.open('unipharma_cache', 1);
+        req.onupgradeneeded = function(e) { e.target.result.createObjectStore('kv'); };
+        req.onsuccess = function(e) { _idb = e.target.result; resolve(_idb); };
+        req.onerror = function() { resolve(null); };
+      } catch(e) { resolve(null); }
+    });
+  }
+  function idbGet(key) {
+    return openIdb().then(function(db) {
+      if (!db) return null;
+      return new Promise(function(resolve) {
+        try {
+          var r = db.transaction('kv','readonly').objectStore('kv').get(key);
+          r.onsuccess = function() { resolve(r.result != null ? r.result : null); };
+          r.onerror = function() { resolve(null); };
+        } catch(e) { resolve(null); }
+      });
+    });
+  }
+  function idbSet(key, value) {
+    return openIdb().then(function(db) {
+      if (!db) return;
+      return new Promise(function(resolve) {
+        try {
+          var tx = db.transaction('kv','readwrite');
+          tx.objectStore('kv').put(value, key);
+          tx.oncomplete = resolve; tx.onerror = resolve;
+        } catch(e) { resolve(); }
+      });
+    });
+  }
+
   // chunk helper for large bulk upserts (10k+ drugs)
   function chunk(arr, n) {
     var out = [];
@@ -133,36 +171,66 @@
     async loadAll() {
       if (!enabled) return null;
 
-      // DRUGS: cached 24 h (master data, rarely changes).
-      // On every cache-hit we also query the remote drug COUNT in parallel with
-      // the supplier/order fetch — zero added latency. If the count differs from
-      // what we stored last time (e.g. after a bulk import), we refresh drug
-      // cache automatically so the new data appears on next reload.
-      // Suppliers + Orders: always fetched fresh.
-      var DRUG_CACHE_TTL = 24 * 3600 * 1000;
+      // Cache TTLs
+      // DRUGS:     IndexedDB, 24 h — master data rarely changes; localStorage can't hold 10k+ drugs (~15 MB)
+      // SUPPLIERS: localStorage, 30 min — small data, but always-fresh was a major egress driver
+      // ORDERS:    localStorage, 10 min — moderate size, reasonable staleness
+      var DRUG_CACHE_TTL     = 24 * 3600 * 1000;
+      var SUPPLIER_CACHE_TTL = 30 * 60  * 1000;
+      var ORDER_CACHE_TTL    = 10 * 60  * 1000;
+      var now = Date.now();
+
+      // ── Read caches ──────────────────────────────────────────
       var drugsFromCache = null;
       try {
-        var ts = parseInt(localStorage.getItem('uni_cloud_ts') || '0', 10);
-        if (ts && (Date.now() - ts) < DRUG_CACHE_TTL) {
-          var cd = JSON.parse(localStorage.getItem('uni_drugs') || '[]');
-          if (cd.length) {
-            var ageMin = Math.round((Date.now() - ts) / 60000);
-            console.info('[UNI_DB] drug cache hit — ' + cd.length + ' drugs (' + ageMin + 'min old)');
+        var drugTs = parseInt(localStorage.getItem('uni_drug_idb_ts') || '0', 10);
+        if (drugTs && (now - drugTs) < DRUG_CACHE_TTL) {
+          var cd = await idbGet('drugs');
+          if (cd && cd.length) {
+            console.info('[UNI_DB] drug cache hit (IDB) — ' + cd.length + ' drugs (' + Math.round((now-drugTs)/60000) + 'min old)');
             drugsFromCache = cd;
+          }
+        }
+      } catch(e) { /* IDB miss */ }
+
+      var suppliersFromCache = null;
+      try {
+        var supTs = parseInt(localStorage.getItem('uni_sup_ts') || '0', 10);
+        if (supTs && (now - supTs) < SUPPLIER_CACHE_TTL) {
+          var cs = JSON.parse(localStorage.getItem('uni_sup_cache') || 'null');
+          if (cs && cs.length) {
+            console.info('[UNI_DB] supplier cache hit — ' + cs.length + ' suppliers');
+            suppliersFromCache = cs;
+          }
+        }
+      } catch(e) { /* cache miss */ }
+
+      var ordersFromCache = null;
+      try {
+        var ordTs = parseInt(localStorage.getItem('uni_ord_ts') || '0', 10);
+        if (ordTs && (now - ordTs) < ORDER_CACHE_TTL) {
+          var co = JSON.parse(localStorage.getItem('uni_ord_cache') || 'null');
+          if (co && co.length >= 0) {
+            console.info('[UNI_DB] order cache hit — ' + co.length + ' orders');
+            ordersFromCache = co;
           }
         }
       } catch(e) { /* cache miss */ }
 
       try {
         var drugs, suppliers, orders;
+        var needsDrugs     = !drugsFromCache;
+        var needsSuppliers = !suppliersFromCache;
+        var needsOrders    = !ordersFromCache;
 
         if (drugsFromCache) {
-          // Fetch suppliers + orders AND check drug count — all in parallel, no extra wait
-          var parallel = await Promise.all([
-            selectAll("suppliers"),
-            selectAll("purchase_orders"),
-            client.from("drugs").select("*", { count: "estimated", head: true }),
-          ]);
+          // Drug cache hit — check count to detect bulk import/delete
+          var countJobs = [];
+          if (needsSuppliers) countJobs.push(selectAll("suppliers")); else countJobs.push(Promise.resolve(suppliersFromCache));
+          if (needsOrders)    countJobs.push(selectAll("purchase_orders")); else countJobs.push(Promise.resolve(ordersFromCache));
+          countJobs.push(client.from("drugs").select("*", { count: "estimated", head: true }));
+
+          var parallel = await Promise.all(countJobs);
           suppliers = parallel[0];
           orders    = parallel[1];
           var countRes    = parallel[2];
@@ -170,15 +238,15 @@
           var cachedCount = parseInt(localStorage.getItem('uni_drug_count') || '0', 10);
 
           if (remoteCount >= 0 && remoteCount !== cachedCount) {
-            // Count changed → bulk import or delete happened; refresh drug cache now
             console.info('[UNI_DB] drug count changed (' + cachedCount + ' → ' + remoteCount + '), refreshing');
             drugs = normDrugs(await selectAll("drugs"));
-            try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+            await idbSet('drugs', drugs);
+            try { localStorage.setItem('uni_drug_idb_ts', now.toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
           } else {
             drugs = drugsFromCache;
           }
         } else {
-          // Full fetch: run startup SQL first so warehouse stock is synced before reading drugs
+          // Drug cache miss — run startup SQL first if configured
           var startupSql = '';
           try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
           if (startupSql) {
@@ -194,21 +262,34 @@
             }
           }
 
-          var allParts = await Promise.all([
-            selectAll("drugs"),
-            selectAll("suppliers"),
-            selectAll("purchase_orders"),
-          ]);
+          var fetchJobs = [selectAll("drugs")];
+          if (needsSuppliers) fetchJobs.push(selectAll("suppliers")); else fetchJobs.push(Promise.resolve(suppliersFromCache));
+          if (needsOrders)    fetchJobs.push(selectAll("purchase_orders")); else fetchJobs.push(Promise.resolve(ordersFromCache));
+
+          var allParts = await Promise.all(fetchJobs);
           drugs = allParts[0]; suppliers = allParts[1]; orders = allParts[2];
           if (!drugs.length && !suppliers.length && !orders.length) return null;
           drugs = normDrugs(drugs);
-          try { localStorage.setItem('uni_cloud_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+          // Save drug cache to IndexedDB (no size limit unlike localStorage)
+          idbSet('drugs', drugs).then(function() {
+            try { localStorage.setItem('uni_drug_idb_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+          });
         }
 
+        // Normalise suppliers
         suppliers = suppliers.map(function(s) {
           var en = (s.nameEN || '').trim();
           return en ? s : Object.assign({}, s, { nameEN: (s.name || s.id || '') });
         });
+
+        // Cache suppliers + orders for next load
+        if (needsSuppliers) {
+          try { localStorage.setItem('uni_sup_cache', JSON.stringify(suppliers)); localStorage.setItem('uni_sup_ts', now.toString()); } catch(e) {}
+        }
+        if (needsOrders) {
+          try { localStorage.setItem('uni_ord_cache', JSON.stringify(orders)); localStorage.setItem('uni_ord_ts', now.toString()); } catch(e) {}
+        }
+
         orders.sort(function (a, b) { return (b.poDate || "").localeCompare(a.poDate || ""); });
         return { drugs: drugs, suppliers: suppliers, orders: orders };
       } catch (e) {
@@ -243,12 +324,12 @@
     },
     async saveSupplier(s) {
       if (!enabled) return;
-      try { await client.from("suppliers").upsert(supplierRow(s)); }
+      try { await client.from("suppliers").upsert(supplierRow(s)); try { localStorage.removeItem('uni_sup_ts'); } catch(_) {} }
       catch (e) { console.warn("[UNI_DB] saveSupplier:", e); }
     },
     async savePO(p) {
       if (!enabled) return;
-      try { await client.from("purchase_orders").upsert(poRow(p)); }
+      try { await client.from("purchase_orders").upsert(poRow(p)); try { localStorage.removeItem('uni_ord_ts'); } catch(_) {} }
       catch (e) { console.warn("[UNI_DB] savePO:", e); }
     },
     async savePOWithUnits(p, items, drugs) {
@@ -282,7 +363,9 @@
         var res = await client.from("drugs").upsert(c);
         if (res.error) throw res.error;
       }
-      try { localStorage.removeItem('uni_cloud_ts'); localStorage.removeItem('uni_drug_count'); } catch(e) {}
+      // Invalidate IDB drug cache so next load re-fetches
+      try { localStorage.removeItem('uni_drug_idb_ts'); localStorage.removeItem('uni_drug_count'); } catch(e) {}
+      idbSet('drugs', null);
     },
     async saveSuppliersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
@@ -290,6 +373,7 @@
         var res = await client.from("suppliers").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_sup_ts'); } catch(e) {}
     },
     async saveOrdersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;

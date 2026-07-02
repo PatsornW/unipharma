@@ -414,6 +414,44 @@ const UTILS = (() => {
     return { id: row.id, name: row.name_th, nameEN: row.name_en, color: row.color, subs: row.subs || [] };
   }
 
+  // ── IndexedDB helpers for large data (drugs cache ~15 MB, too big for localStorage) ──
+  var _idb = null;
+  function openIdb() {
+    if (_idb) return Promise.resolve(_idb);
+    return new Promise(function(resolve) {
+      try {
+        var req = indexedDB.open('unipharma_cache', 1);
+        req.onupgradeneeded = function(e) { e.target.result.createObjectStore('kv'); };
+        req.onsuccess = function(e) { _idb = e.target.result; resolve(_idb); };
+        req.onerror = function() { resolve(null); };
+      } catch(e) { resolve(null); }
+    });
+  }
+  function idbGet(key) {
+    return openIdb().then(function(db) {
+      if (!db) return null;
+      return new Promise(function(resolve) {
+        try {
+          var r = db.transaction('kv','readonly').objectStore('kv').get(key);
+          r.onsuccess = function() { resolve(r.result != null ? r.result : null); };
+          r.onerror = function() { resolve(null); };
+        } catch(e) { resolve(null); }
+      });
+    });
+  }
+  function idbSet(key, value) {
+    return openIdb().then(function(db) {
+      if (!db) return;
+      return new Promise(function(resolve) {
+        try {
+          var tx = db.transaction('kv','readwrite');
+          tx.objectStore('kv').put(value, key);
+          tx.oncomplete = resolve; tx.onerror = resolve;
+        } catch(e) { resolve(); }
+      });
+    });
+  }
+
   // chunk helper for large bulk upserts (10k+ drugs)
   function chunk(arr, n) {
     var out = [];
@@ -450,47 +488,121 @@ const UTILS = (() => {
 
     // Returns {drugs,suppliers,orders} from the cloud, or null if not
     // enabled / nothing stored yet.
+    // Caching strategy:
+    //   DRUGS:     IndexedDB 24 h — ~15 MB, too large for localStorage
+    //   SUPPLIERS: localStorage 30 min — small, but always-fresh was a major egress driver
+    //   ORDERS:    localStorage 10 min — moderate, acceptable staleness
     async loadAll() {
       if (!enabled) return null;
+
+      var DRUG_CACHE_TTL     = 24 * 3600 * 1000;
+      var SUPPLIER_CACHE_TTL = 30 * 60  * 1000;
+      var ORDER_CACHE_TTL    = 10 * 60  * 1000;
+      var now = Date.now();
+
+      // ── Read caches ──────────────────────────────────────────
+      var drugsFromCache = null;
       try {
-        // Run startup SQL (warehouse auto-sync) BEFORE loading — so fetched data is already updated
-        var startupSql = '';
-        try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
-        if (startupSql) {
-          try {
-            var sr = await client.rpc('exec_sql', { sql: startupSql });
-            var status = sr.error ? ('error: ' + (sr.error.message || sr.error)) : 'ok';
-            try { localStorage.setItem('uni_startup_sql_last_run', new Date().toISOString()); localStorage.setItem('uni_startup_sql_last_status', status); } catch(e) {}
-            if (sr.error) console.warn('[UNI_DB] Startup SQL error:', sr.error);
-            else console.info('[UNI_DB] Startup SQL executed OK');
-          } catch(e) {
-            try { localStorage.setItem('uni_startup_sql_last_status', 'error: ' + (e.message || String(e))); } catch(_) {}
-            console.warn('[UNI_DB] Startup SQL failed (continuing):', e);
+        var drugTs = parseInt(localStorage.getItem('uni_drug_idb_ts') || '0', 10);
+        if (drugTs && (now - drugTs) < DRUG_CACHE_TTL) {
+          var cd = await idbGet('drugs');
+          if (cd && cd.length) {
+            console.info('[UNI_DB] drug cache hit (IDB) — ' + cd.length + ' drugs (' + Math.round((now-drugTs)/60000) + 'min old)');
+            drugsFromCache = cd;
           }
         }
+      } catch(e) { /* IDB miss */ }
 
-        // Fetch all three tables in parallel instead of sequentially
-        var results = await Promise.all([
-          selectAll("drugs"),
-          selectAll("suppliers"),
-          selectAll("purchase_orders"),
-        ]);
-        var drugs = results[0], suppliers = results[1], orders = results[2];
-        if (!drugs.length && !suppliers.length && !orders.length) return null;
-        // Normalize bilingual fields on load so EN mode never shows blank or drug-code as name
-        drugs = drugs.map(function(d) {
-          var en = (d.nameEN || '').trim();
-          if (!en || en === d.code) en = (d.nameTH || d.code || '');
-          return en === d.nameEN ? d : Object.assign({}, d, { nameEN: en });
-        });
+      var suppliersFromCache = null;
+      try {
+        var supTs = parseInt(localStorage.getItem('uni_sup_ts') || '0', 10);
+        if (supTs && (now - supTs) < SUPPLIER_CACHE_TTL) {
+          var cs = JSON.parse(localStorage.getItem('uni_sup_cache') || 'null');
+          if (cs && cs.length) { console.info('[UNI_DB] supplier cache hit'); suppliersFromCache = cs; }
+        }
+      } catch(e) {}
+
+      var ordersFromCache = null;
+      try {
+        var ordTs = parseInt(localStorage.getItem('uni_ord_ts') || '0', 10);
+        if (ordTs && (now - ordTs) < ORDER_CACHE_TTL) {
+          var co = JSON.parse(localStorage.getItem('uni_ord_cache') || 'null');
+          if (co && co.length >= 0) { console.info('[UNI_DB] order cache hit'); ordersFromCache = co; }
+        }
+      } catch(e) {}
+
+      try {
+        var drugs, suppliers, orders;
+        var needsDrugs     = !drugsFromCache;
+        var needsSuppliers = !suppliersFromCache;
+        var needsOrders    = !ordersFromCache;
+
+        if (drugsFromCache) {
+          // Drug cache hit — check count; run startup SQL only on fresh drug fetch
+          var countJobs = [];
+          if (needsSuppliers) countJobs.push(selectAll("suppliers")); else countJobs.push(Promise.resolve(suppliersFromCache));
+          if (needsOrders)    countJobs.push(selectAll("purchase_orders")); else countJobs.push(Promise.resolve(ordersFromCache));
+          countJobs.push(client.from("drugs").select("*", { count: "estimated", head: true }));
+
+          var parallel = await Promise.all(countJobs);
+          suppliers = parallel[0]; orders = parallel[1];
+          var countRes = parallel[2];
+          var remoteCount = (countRes && !countRes.error) ? (countRes.count || 0) : -1;
+          var cachedCount = parseInt(localStorage.getItem('uni_drug_count') || '0', 10);
+
+          if (remoteCount >= 0 && remoteCount !== cachedCount) {
+            console.info('[UNI_DB] drug count changed (' + cachedCount + ' → ' + remoteCount + '), refreshing');
+            var fn = function(d) { var en=(d.nameEN||'').trim(); if(!en||en===d.code)en=(d.nameTH||d.code||''); return en===d.nameEN?d:Object.assign({},d,{nameEN:en}); };
+            drugs = (await selectAll("drugs")).map(fn);
+            idbSet('drugs', drugs).then(function() {
+              try { localStorage.setItem('uni_drug_idb_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+            });
+          } else {
+            drugs = drugsFromCache;
+          }
+        } else {
+          // Drug cache miss — run startup SQL first
+          var startupSql = '';
+          try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
+          if (startupSql) {
+            try {
+              var sr = await client.rpc('exec_sql', { sql: startupSql });
+              var status = sr.error ? ('error: ' + (sr.error.message || sr.error)) : 'ok';
+              try { localStorage.setItem('uni_startup_sql_last_run', new Date().toISOString()); localStorage.setItem('uni_startup_sql_last_status', status); } catch(e) {}
+              if (sr.error) console.warn('[UNI_DB] Startup SQL error:', sr.error);
+              else console.info('[UNI_DB] Startup SQL executed OK');
+            } catch(e) {
+              try { localStorage.setItem('uni_startup_sql_last_status', 'error: ' + (e.message || String(e))); } catch(_) {}
+              console.warn('[UNI_DB] Startup SQL failed (continuing):', e);
+            }
+          }
+
+          var fetchJobs = [selectAll("drugs")];
+          if (needsSuppliers) fetchJobs.push(selectAll("suppliers")); else fetchJobs.push(Promise.resolve(suppliersFromCache));
+          if (needsOrders)    fetchJobs.push(selectAll("purchase_orders")); else fetchJobs.push(Promise.resolve(ordersFromCache));
+
+          var allParts = await Promise.all(fetchJobs);
+          var normFn = function(d) { var en=(d.nameEN||'').trim(); if(!en||en===d.code)en=(d.nameTH||d.code||''); return en===d.nameEN?d:Object.assign({},d,{nameEN:en}); };
+          drugs = allParts[0].map(normFn); suppliers = allParts[1]; orders = allParts[2];
+          if (!drugs.length && !suppliers.length && !orders.length) return null;
+          idbSet('drugs', drugs).then(function() {
+            try { localStorage.setItem('uni_drug_idb_ts', Date.now().toString()); localStorage.setItem('uni_drug_count', String(drugs.length)); } catch(e) {}
+          });
+        }
+
         suppliers = suppliers.map(function(s) {
           var en = (s.nameEN || '').trim();
           return en ? s : Object.assign({}, s, { nameEN: (s.name || s.id || '') });
         });
-        // newest POs first
-        orders.sort(function (a, b) {
-          return (b.poDate || "").localeCompare(a.poDate || "");
-        });
+
+        if (needsSuppliers) {
+          try { localStorage.setItem('uni_sup_cache', JSON.stringify(suppliers)); localStorage.setItem('uni_sup_ts', now.toString()); } catch(e) {}
+        }
+        if (needsOrders) {
+          try { localStorage.setItem('uni_ord_cache', JSON.stringify(orders)); localStorage.setItem('uni_ord_ts', now.toString()); } catch(e) {}
+        }
+
+        orders.sort(function (a, b) { return (b.poDate || "").localeCompare(a.poDate || ""); });
         return { drugs: drugs, suppliers: suppliers, orders: orders };
       } catch (e) {
         console.warn("[UNI_DB] loadAll failed:", e);
@@ -524,18 +636,18 @@ const UTILS = (() => {
     },
     async saveSupplier(s) {
       if (!enabled) return;
-      try { await client.from("suppliers").upsert(supplierRow(s)); }
+      try { await client.from("suppliers").upsert(supplierRow(s)); try { localStorage.removeItem('uni_sup_ts'); } catch(_) {} }
       catch (e) { console.warn("[UNI_DB] saveSupplier:", e); }
     },
     async savePO(p) {
       if (!enabled) return;
-      try { await client.from("purchase_orders").upsert(poRow(p)); }
+      try { await client.from("purchase_orders").upsert(poRow(p)); try { localStorage.removeItem('uni_ord_ts'); } catch(_) {} }
       catch (e) { console.warn("[UNI_DB] savePO:", e); }
     },
     async savePOWithUnits(p, items, drugs) {
       if (!enabled) return;
       try {
-        await client.from("purchase_orders").upsert(poRow(p));
+        await client.from("purchase_orders").upsert(poRow(p)); try { localStorage.removeItem('uni_ord_ts'); } catch(_) {}
         for (const item of items) {
           const drug = drugs.find(d => d.code === item.code);
           if (drug && drug.unit !== item.unit) {
@@ -563,6 +675,8 @@ const UTILS = (() => {
         var res = await client.from("drugs").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_drug_idb_ts'); localStorage.removeItem('uni_drug_count'); } catch(e) {}
+      idbSet('drugs', null);
     },
     async saveSuppliersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
@@ -570,6 +684,7 @@ const UTILS = (() => {
         var res = await client.from("suppliers").upsert(c);
         if (res.error) throw res.error;
       }
+      try { localStorage.removeItem('uni_sup_ts'); } catch(e) {}
     },
     async saveOrdersBulk(arr) {
       if (!enabled || !arr || !arr.length) return;
