@@ -121,13 +121,18 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
               </div>
 
               {sup.promotions?.length > 0 && (
-                <div>
+                <div style={{ marginBottom: sup.returnPolicy ? 6 : 0 }}>
                   <div style={{ fontSize: 10, color: 'var(--txt4)', marginBottom: 4, fontWeight: 600 }}>🎁 {L('โปรโมชั่น', 'Promotions')}</div>
                   {sup.promotions.map(p => (
                     <div key={p.id} style={{ fontSize: 11, color: 'var(--ok)', background: 'var(--ok-bg)', borderRadius: 4, padding: '3px 8px', marginBottom: 3 }}>
                       {p.name} · {L('ถึง', 'until')} {UTILS.fmtDate(p.validUntil, lang)}
                     </div>
                   ))}
+                </div>
+              )}
+              {sup.returnPolicy && (
+                <div style={{ fontSize: 11, color: 'var(--txt3)', background: 'var(--card2)', borderRadius: 6, padding: '5px 8px', marginTop: sup.promotions?.length ? 0 : 0 }}>
+                  <span style={{ color: 'var(--txt4)', marginRight: 4 }}>↩</span>{sup.returnPolicy}
                 </div>
               )}
             </div>
