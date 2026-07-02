@@ -3342,7 +3342,7 @@ Object.assign(window, { PODocumentModal });
 /* ===== Suppliers.jsx ===== */
 // Suppliers.jsx — Supplier Management
 
-function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, orders, notify, setShowCreate, perm = { canWrite: true } }) {
+function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orders, notify, setShowCreate, perm = { canWrite: true } }) {
   const [search, setSearch] = useState('');
   const [editSup, setEditSup] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -3445,15 +3445,36 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, orders, notify
         })}
       </div>
 
-      {viewSup && <SupplierDetail sup={viewSup} lang={lang} L={L} drugs={drugs} orders={orders} onClose={() => setViewSup(null)} onEdit={() => { setEditSup(viewSup); setViewSup(null); }} />}
+      {viewSup && <SupplierDetail sup={viewSup} lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} orders={orders} onClose={() => setViewSup(null)} onEdit={() => { setEditSup(viewSup); setViewSup(null); }} />}
       {(showAdd || editSup) && <SupplierForm sup={editSup} lang={lang} L={L} drugs={drugs} onSave={saveSup} onClose={() => { setShowAdd(false); setEditSup(null); }} />}
     </div>
   );
 }
 
-function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
+function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit }) {
+  const [dealEdit, setDealEdit] = React.useState(null);
   const supDrugs = drugs.filter(d => sup.drugs?.includes(d.code));
   const supOrders = orders.filter(o => o.supplierId === sup.id).sort((a, b) => new Date(b.poDate) - new Date(a.poDate));
+
+  const saveDeal = (drugCode, dealData) => {
+    setDrugs(prev => prev.map(d => {
+      if (d.code !== drugCode) return d;
+      const saved = { ...d, supplierDeals: { ...(d.supplierDeals||{}), [sup.id]: dealData } };
+      if (window.UNI_DB) window.UNI_DB.saveDrug(saved);
+      return saved;
+    }));
+    setDealEdit(null);
+  };
+  const removeDeal = (drugCode) => {
+    setDrugs(prev => prev.map(d => {
+      if (d.code !== drugCode) return d;
+      const { [sup.id]: _, ...rest } = (d.supplierDeals || {});
+      const saved = { ...d, supplierDeals: rest };
+      if (window.UNI_DB) window.UNI_DB.saveDrug(saved);
+      return saved;
+    }));
+  };
+
   return (
     <Modal title={lang==='th'?sup.name:(sup.nameEN||sup.name)} onClose={onClose} size={800}
       footer={<><button className="btn btn-ghost" onClick={onClose}>{L('ปิด', 'Close')}</button><button className="btn btn-outline" onClick={onEdit}>✏ {L('แก้ไข', 'Edit')}</button></>}>
@@ -3492,30 +3513,43 @@ function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
       </div>
       {(() => {
         const drugDeals = drugs.filter(d => { const deal = d.supplierDeals?.[sup.id]; return deal && (deal.buyQty>0||deal.freeQty>0||deal.freeItems||deal.specialDiscount>0||deal.note); });
-        if (!drugDeals.length) return null;
         return (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight:700, fontSize:12, color:'var(--txt3)', marginBottom:8 }}>🎁 {L('ดีลต่อสินค้า','Per-Drug Deals')} ({drugDeals.length})</div>
-            <div className="tbl-wrap" style={{ maxHeight:160 }}>
-              <table>
-                <thead><tr><th>{L('รหัส','Code')}</th><th>{L('ชื่อ','Name')}</th><th>{L('ซื้อ/แถม','Buy/Free')}</th><th className="tbl-num">{L('ส่วนลด%','Disc%')}</th><th>{L('หมายเหตุ','Note')}</th></tr></thead>
-                <tbody>{drugDeals.map(d => {
-                  const deal = d.supplierDeals[sup.id];
-                  return (
-                    <tr key={d.code}>
-                      <td style={{ fontFamily:'monospace', fontSize:11, color:'var(--acc2)' }}>{d.code}</td>
-                      <td style={{ fontSize:12 }}>{lang==='th'?d.nameTH:(d.nameEN||d.nameTH)}</td>
-                      <td style={{ fontSize:11 }}>{deal.buyQty>0&&deal.freeQty>0?`${deal.buyQty}+${deal.freeQty}`:deal.freeItems||'-'}</td>
-                      <td className="tbl-num" style={{ fontSize:11 }}>{deal.specialDiscount>0?`${deal.specialDiscount}%`:'-'}</td>
-                      <td style={{ fontSize:11, color:'var(--txt3)' }}>{deal.note||'-'}</td>
-                    </tr>
-                  );
-                })}</tbody>
-              </table>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <div style={{ fontWeight:700, fontSize:12, color:'var(--txt3)' }}>🎁 {L('ดีลต่อสินค้า','Per-Drug Deals')} ({drugDeals.length})</div>
+              <button className="btn btn-ghost btn-xs" onClick={() => setDealEdit({ drugCode:'', deal:{ buyQty:'', freeQty:'', freeItems:'', specialDiscount:'', note:'' } })}>+ {L('เพิ่มดีล','Add Deal')}</button>
             </div>
+            {drugDeals.length > 0 ? (
+              <div className="tbl-wrap" style={{ maxHeight:200 }}>
+                <table>
+                  <thead><tr><th>{L('รหัส','Code')}</th><th>{L('ชื่อ','Name')}</th><th>{L('ซื้อ/แถม','Buy/Free')}</th><th className="tbl-num">{L('ส่วนลด%','Disc%')}</th><th>{L('หมายเหตุ','Note')}</th><th style={{ width:56 }}></th></tr></thead>
+                  <tbody>{drugDeals.map(d => {
+                    const deal = d.supplierDeals[sup.id];
+                    return (
+                      <tr key={d.code}>
+                        <td style={{ fontFamily:'monospace', fontSize:11, color:'var(--acc2)' }}>{d.code}</td>
+                        <td style={{ fontSize:12 }}>{lang==='th'?d.nameTH:(d.nameEN||d.nameTH)}</td>
+                        <td style={{ fontSize:11 }}>{deal.buyQty>0&&deal.freeQty>0?`${deal.buyQty}+${deal.freeQty}`:deal.freeItems||'-'}</td>
+                        <td className="tbl-num" style={{ fontSize:11 }}>{deal.specialDiscount>0?`${deal.specialDiscount}%`:'-'}</td>
+                        <td style={{ fontSize:11, color:'var(--txt3)' }}>{deal.note||'-'}</td>
+                        <td>
+                          <div style={{ display:'flex', gap:4 }}>
+                            <button className="btn-icon" style={{ fontSize:12 }} title={L('แก้ไข','Edit')} onClick={() => setDealEdit({ drugCode:d.code, deal:{ buyQty:deal.buyQty||'', freeQty:deal.freeQty||'', freeItems:deal.freeItems||'', specialDiscount:deal.specialDiscount||'', note:deal.note||'' } })}>✏</button>
+                            <button className="btn-icon" style={{ fontSize:12, color:'var(--err)' }} title={L('ลบ','Remove')} onClick={() => removeDeal(d.code)}>✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ fontSize:12, color:'var(--txt4)', padding:'8px 0' }}>{L('ยังไม่มีดีล — กด + เพิ่มดีล เพื่อเริ่มต้น','No deals yet — click + Add Deal to start')}</div>
+            )}
           </div>
         );
       })()}
+      {dealEdit !== null && <DealEditorModal lang={lang} L={L} drugs={drugs} supId={sup.id} initialDrugCode={dealEdit.drugCode} initialDeal={dealEdit.deal} onSave={saveDeal} onClose={() => setDealEdit(null)} />}
       <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--txt3)', marginBottom: 8 }}>📦 {L('รายการสินค้า', 'Products')} ({supDrugs.length})</div>
       <div className="tbl-wrap" style={{ maxHeight: 200, marginBottom: 16 }}>
         <table>
@@ -3547,6 +3581,86 @@ function SupplierDetail({ sup, lang, L, drugs, orders, onClose, onEdit }) {
             </tr>
           ))}</tbody>
         </table>
+      </div>
+    </Modal>
+  );
+}
+
+function DealEditorModal({ lang, L, drugs, supId, initialDrugCode, initialDeal, onSave, onClose }) {
+  const [drugCode, setDrugCode] = React.useState(initialDrugCode || '');
+  const [query, setQuery] = React.useState('');
+  const [showList, setShowList] = React.useState(!initialDrugCode);
+  const [form, setForm] = React.useState(initialDeal || { buyQty:'', freeQty:'', freeItems:'', specialDiscount:'', note:'' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const filteredDrugs = React.useMemo(() => {
+    if (!query) return [];
+    const q = query.toLowerCase();
+    return drugs.filter(d => d.code.toLowerCase().includes(q)||d.nameTH.toLowerCase().includes(q)||(d.nameEN||'').toLowerCase().includes(q)).slice(0,20);
+  }, [drugs, query]);
+  const selectedDrug = drugs.find(d => d.code === drugCode);
+  const handleSave = () => {
+    if (!drugCode) return;
+    onSave(drugCode, {
+      buyQty: parseInt(form.buyQty)||0,
+      freeQty: parseInt(form.freeQty)||0,
+      freeItems: form.freeItems||'',
+      specialDiscount: parseFloat(form.specialDiscount)||0,
+      note: form.note||''
+    });
+  };
+  return (
+    <Modal title={`🎁 ${L('ดีลสินค้า','Drug Deal')}`} onClose={onClose} size={480}
+      footer={<><button className="btn btn-ghost" onClick={onClose}>{L('ยกเลิก','Cancel')}</button><button className="btn btn-primary" disabled={!drugCode} onClick={handleSave}>{L('บันทึก','Save')}</button></>}>
+      <div className="form-group" style={{ marginBottom:12 }}>
+        <label className="label">💊 {L('เลือกสินค้า','Select Drug')}</label>
+        {selectedDrug && !showList ? (
+          <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--card2)', borderRadius:8, padding:'8px 12px' }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600, fontSize:12 }}>{selectedDrug.nameTH}</div>
+              <div style={{ fontSize:11, color:'var(--txt3)' }}>{selectedDrug.nameEN} · {selectedDrug.code}</div>
+            </div>
+            {!initialDrugCode && <button className="btn btn-ghost btn-xs" onClick={()=>{setDrugCode('');setQuery('');setShowList(true);}}>{L('เปลี่ยน','Change')}</button>}
+          </div>
+        ) : (
+          <div style={{ position:'relative' }}>
+            <input className="input" placeholder={L('พิมพ์รหัสหรือชื่อยา…','Type drug code or name…')}
+              value={query} onChange={e=>{setQuery(e.target.value);setShowList(true);}} autoFocus />
+            {filteredDrugs.length > 0 && showList && (
+              <div style={{ position:'absolute', zIndex:200, left:0, right:0, top:'100%', marginTop:2, background:'var(--card)', border:'1px solid var(--bdr)', borderRadius:8, boxShadow:'0 4px 20px rgba(0,0,0,.15)', maxHeight:180, overflowY:'auto' }}>
+                {filteredDrugs.map(d => (
+                  <div key={d.code} style={{ padding:'8px 12px', cursor:'pointer', borderBottom:'1px solid var(--bdr)', fontSize:12 }}
+                    onMouseDown={()=>{setDrugCode(d.code);setShowList(false);}}>
+                    <span style={{ fontFamily:'monospace', color:'var(--acc2)', fontSize:11, marginRight:6 }}>{d.code}</span>{d.nameTH}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+        <div className="form-group" style={{ margin:0 }}>
+          <label className="label">{L('ซื้อ (ชิ้น)','Buy Qty')}</label>
+          <input className="input" type="number" min="0" placeholder="12" value={form.buyQty} onChange={e=>set('buyQty',e.target.value)} />
+        </div>
+        <div className="form-group" style={{ margin:0 }}>
+          <label className="label">{L('แถม (ชิ้น)','Free Qty')}</label>
+          <input className="input" type="number" min="0" placeholder="1" value={form.freeQty} onChange={e=>set('freeQty',e.target.value)} />
+        </div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+        <div className="form-group" style={{ margin:0 }}>
+          <label className="label">{L('ของแถม (ระบุชื่อ)','Free Item(s)')}</label>
+          <input className="input" placeholder={L('เช่น หน้ากาก N95','e.g. N95 mask')} value={form.freeItems} onChange={e=>set('freeItems',e.target.value)} />
+        </div>
+        <div className="form-group" style={{ margin:0 }}>
+          <label className="label">{L('ส่วนลดพิเศษ %','Special Disc%')}</label>
+          <input className="input" type="number" min="0" max="100" step="0.5" placeholder="0" value={form.specialDiscount} onChange={e=>set('specialDiscount',e.target.value)} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="label">{L('หมายเหตุ','Note')}</label>
+        <input className="input" placeholder={L('เงื่อนไข, วันสิ้นสุด, ฯลฯ','Conditions, expiry, etc.')} value={form.note} onChange={e=>set('note',e.target.value)} />
       </div>
     </Modal>
   );
