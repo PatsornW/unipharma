@@ -301,6 +301,11 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{lang === 'th' ? d.nameTH : (d.nameEN||d.nameTH)}</div>
                         <div style={{ fontSize: 11, color: 'var(--txt3)' }}>{lang === 'th' ? (d.nameEN||'') : d.nameTH}</div>
+                        {d.remark && (() => { const r = DRUG_REMARKS.find(x=>x.code===d.remark); return r ? (
+                          <span style={{ fontSize:10, padding:'1px 7px', borderRadius:10, background:'var(--warn-bg)', color:'var(--warn)', fontWeight:600, display:'inline-block', marginTop:2 }}>
+                            📝 {lang==='th'?r.th:r.en}
+                          </span>
+                        ) : null; })()}
                       </td>
                       <td>
                         <span style={{ fontSize: 12, color: 'var(--txt3)' }}>{UTILS.getUnit(d.unit, lang)}</span>
@@ -464,6 +469,20 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                               ))}
                               <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 4 }}>{L('สั่งซื้อแล้ว', 'Ordered')} {d.orderCount} {L('ครั้ง/ปี', 'times/yr')}</div>
                             </div>
+                            {d.remark && (() => {
+                              const r = DRUG_REMARKS.find(x=>x.code===d.remark);
+                              if (!r) return null;
+                              return (
+                                <div>
+                                  <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:4, fontWeight:600 }}>📝 {L('หมายเหตุ','Remarks')}</div>
+                                  <div style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:'var(--warn-bg)', color:'var(--warn)', fontWeight:600, display:'inline-block', marginBottom:4 }}>
+                                    {lang==='th'?r.th:r.en}
+                                  </div>
+                                  <div style={{ fontSize:11, color:'var(--txt3)' }}>{lang==='th'?r.detailTH:r.detailEN}</div>
+                                  {d.remarkNote && <div style={{ fontSize:11, color:'var(--txt4)', marginTop:4, fontStyle:'italic' }}>📌 {d.remarkNote}</div>}
+                                </div>
+                              );
+                            })()}
                             {(() => {
                               const deals = d.supplierDeals || {};
                               const supIds = [d.supplierId, ...(d.extraSuppliers||(d.extraSupplierIds||[]).map(id=>({id}))).filter(s=>s.id).map(s=>s.id)].filter(Boolean);

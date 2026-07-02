@@ -169,6 +169,18 @@ function StockBar({ current, min, max }) {
   );
 }
 
+/* ── Drug Remarks (non-stock / special conditions) ── */
+const DRUG_REMARKS = [
+  { code:'on_demand',         th:'สั่งซื้อเมื่อมีคำสั่งซื้อ',   en:'Purchase on Demand',   detailTH:'สั่งซื้อเมื่อมีคำสั่งซื้อจากลูกค้าหรือสาขาเท่านั้น',             detailEN:'Purchased only upon customer or branch request.' },
+  { code:'low_demand',        th:'ความต้องการต่ำ',              en:'Low Demand',           detailTH:'ยอดขายหรือการใช้งานต่ำ ไม่คุ้มค่าต่อการเก็บสต็อก',             detailEN:'Low sales or usage; not cost-effective to keep in stock.' },
+  { code:'high_value',        th:'ราคาสูง / ต้นทุนสูง',         en:'High-Value Item',      detailTH:'สินค้ามีมูลค่าสูง จึงไม่เก็บสต็อกเพื่อลดต้นทุน',               detailEN:'High inventory value; stocked only when required to reduce carrying cost.' },
+  { code:'short_shelf',       th:'อายุสินค้าสั้น',              en:'Short Shelf Life',     detailTH:'มีอายุการใช้งานสั้นหรือมีความเสี่ยงหมดอายุก่อนใช้งาน',        detailEN:'Short shelf life or high risk of expiry before use.' },
+  { code:'substitute',        th:'มีสินค้าทดแทน',               en:'Substitute Available', detailTH:'มีสินค้าอื่นที่สามารถใช้ทดแทนได้',                             detailEN:'An alternative stocked item is available.' },
+  { code:'supply_constraint', th:'ข้อจำกัดด้านการจัดหา',        en:'Supply Constraints',   detailTH:'เป็นสินค้านำเข้า ผลิตตามสั่ง หรือมีข้อจำกัดในการจัดหา',         detailEN:'Imported, made-to-order, or subject to supply limitations.' },
+  { code:'storage_constraint',th:'ข้อจำกัดด้านการจัดเก็บ',      en:'Storage Constraints',  detailTH:'ต้องใช้พื้นที่หรือเงื่อนไขการจัดเก็บเป็นพิเศษ',                 detailEN:'Requires special storage conditions or significant storage space.' },
+  { code:'policy',            th:'ตามนโยบายบริษัท',             en:'Company Policy',       detailTH:'กำหนดเป็นสินค้า Non-stock ตามนโยบายของบริษัท',                 detailEN:'Designated as a non-stock item according to company policy.' },
+];
+
 /* ── Drug Form (Add/Edit) ── */
 function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
   const cats = DB.CATEGORIES;
@@ -504,6 +516,42 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
         ))}
       </div>
       {inp('minStock', L('สต็อกขั้นต่ำ (แจ้งเตือน)', 'Min Stock (Alert)'), 'number')}
+
+      <div className="divider" />
+      <div style={{ marginBottom:8, fontSize:12, fontWeight:700, color:'var(--txt2)' }}>
+        📝 {L('หมายเหตุสินค้า','Product Remarks')}
+        <span style={{ fontWeight:400, color:'var(--txt4)', marginLeft:8, fontSize:11 }}>
+          {L('(เหตุผลที่ไม่สต็อก หรือมีเงื่อนไขพิเศษ)','(reason for non-stock or special condition)')}
+        </span>
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:8 }}>
+        {DRUG_REMARKS.map(r => {
+          const active = form.remark === r.code;
+          return (
+            <button key={r.code} type="button"
+              onClick={() => set('remark', active ? '' : r.code)}
+              style={{
+                padding:'5px 12px', borderRadius:20, fontSize:12,
+                border:`1px solid ${active?'var(--acc2)':'var(--bdr)'}`,
+                background: active ? 'var(--acc2)' : 'var(--card2)',
+                color: active ? '#fff' : 'var(--txt)',
+                cursor:'pointer', fontWeight: active ? 600 : 400
+              }}>
+              {lang==='th' ? r.th : r.en}
+            </button>
+          );
+        })}
+      </div>
+      {form.remark && (
+        <div style={{ fontSize:11, color:'var(--txt3)', background:'var(--card2)', borderRadius:6, padding:'6px 10px', marginBottom:8, border:'1px solid var(--bdr)' }}>
+          {lang==='th' ? DRUG_REMARKS.find(r=>r.code===form.remark)?.detailTH : DRUG_REMARKS.find(r=>r.code===form.remark)?.detailEN}
+        </div>
+      )}
+      <div className="form-group" style={{ marginBottom:16 }}>
+        <label className="label" style={{ fontSize:11 }}>{L('หมายเหตุเพิ่มเติม','Additional Note')}</label>
+        <input className="input" value={form.remarkNote||''} onChange={e=>set('remarkNote',e.target.value)}
+          placeholder={L('หมายเหตุเพิ่มเติม (ถ้ามี)','Additional note (optional)')} />
+      </div>
 
       <div className="divider" />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
