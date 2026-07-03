@@ -8329,18 +8329,24 @@ function App() {
     return unsub;
   }, [session, authOn]);
 
-  // Apply color & density tweaks via CSS variables
+  // Apply color & density tweaks via CSS variables.
+  // Earth theme manages its own accent/status colors via [data-theme="earth"] CSS —
+  // remove inline overrides so those rules are not blocked by higher-specificity inline style.
   useMemo(() => {
     const root = document.documentElement;
-    root.style.setProperty('--acc', colors.accent);
-    root.style.setProperty('--acc2', colors.accent2);
-    root.style.setProperty('--ok', colors.ok);
-    root.style.setProperty('--err', colors.err);
-    root.style.setProperty('--warn', colors.warn);
+    if (theme === 'earth') {
+      ['--acc','--acc2','--ok','--err','--warn'].forEach(v => root.style.removeProperty(v));
+    } else {
+      root.style.setProperty('--acc', colors.accent);
+      root.style.setProperty('--acc2', colors.accent2);
+      root.style.setProperty('--ok', colors.ok);
+      root.style.setProperty('--err', colors.err);
+      root.style.setProperty('--warn', colors.warn);
+    }
     root.style.setProperty('--density-gap', dens.gap);
     root.style.setProperty('--density-pad', dens.cardPad);
     root.style.setProperty('--density-fs', dens.fontSize);
-  }, [colorScheme, density, colors, dens]);
+  }, [theme, colorScheme, density, colors, dens]);
 
   const setDensityAndSave = (v) => { setDensity(v); localStorage.setItem('uni_density', v); };
   const setColorSchemeAndSave = (v) => { setColorScheme(v); localStorage.setItem('uni_colors', v); };
