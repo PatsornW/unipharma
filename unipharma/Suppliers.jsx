@@ -391,15 +391,22 @@ function DealEditorModal({ lang, L, drugs, supId, initialDrugCode, initialDeal, 
 function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   const isEdit = !!sup;
   const [form, setForm] = useState(() => {
-    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', category:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''},{name:'',phone:''},{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[] };
-    return { ...sup, contacts: sup.contacts || [{name:sup.contact||'',phone:sup.phone||''},{name:'',phone:''},{name:'',phone:''}], returnPolicy: sup.returnPolicy||'', returnPolicyEN: sup.returnPolicyEN||'', reps: (sup.reps||[]).map(r=>({...r, drugs:r.drugs||[]})) };
+    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[] };
+    const existingContacts = (sup.contacts||[]).filter(c=>c.name||c.phone);
+    return { ...sup, contacts: existingContacts.length ? existingContacts : (sup.contact ? [{name:sup.contact,phone:sup.phone||''}] : [{name:'',phone:''}]), returnPolicy: sup.returnPolicy||'', returnPolicyEN: sup.returnPolicyEN||'', reps: (sup.reps||[]).map(r=>({...r, drugs:r.drugs||[]})) };
   });
   const [drugSearch, setDrugSearch] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setContact = (i, k, v) => setForm(f => {
-    const contacts = [...(f.contacts||[{name:'',phone:''},{name:'',phone:''},{name:'',phone:''}])];
+    const contacts = [...(f.contacts||[{name:'',phone:''}])];
     contacts[i] = { ...contacts[i], [k]: v };
-    return { ...f, contacts, contact: contacts[0].name, phone: contacts[0].phone };
+    return { ...f, contacts, contact: contacts[0]?.name||'', phone: contacts[0]?.phone||'' };
+  });
+  const addContact = () => setForm(f => ({...f, contacts: [...(f.contacts||[{name:'',phone:''}]), {name:'',phone:''}]}));
+  const removeContact = (i) => setForm(f => {
+    const contacts = (f.contacts||[]).filter((_,idx)=>idx!==i);
+    const kept = contacts.length ? contacts : [{name:'',phone:''}];
+    return {...f, contacts:kept, contact:kept[0]?.name||'', phone:kept[0]?.phone||''};
   });
   const promos = form.promotions || [];
   const drugList = form.drugs || [];
@@ -458,17 +465,26 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
         {inp('nameEN', L('ชื่อบริษัท (อังกฤษ)', 'English Name'))}
       </div>
       <div style={{ marginBottom:12 }}>
-        <label className="label">👤 {L('ผู้ติดต่อ / โทรศัพท์', 'Contact / Phone')}</label>
-        {[0,1,2].map(i => (
-          <div key={i} className="form-row" style={{ marginBottom: i<2?6:0 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <label className="label" style={{ margin:0 }}>👤 {L('ผู้ติดต่อ / โทรศัพท์', 'Contact / Phone')}</label>
+          <button type="button" className="btn btn-ghost" style={{ padding:'4px 10px', fontSize:12 }} onClick={addContact}>
+            + {L('เพิ่มผู้ติดต่อ', 'Add Contact')}
+          </button>
+        </div>
+        {(form.contacts||[{name:'',phone:''}]).map((c,i) => (
+          <div key={i} className="form-row" style={{ marginBottom:6, alignItems:'center' }}>
             <div className="form-group" style={{ margin:0 }}>
               <input className="input" placeholder={L(`ผู้ติดต่อ ${i+1}`,`Contact ${i+1}`)}
-                value={form.contacts?.[i]?.name||''} onChange={e=>setContact(i,'name',e.target.value)} />
+                value={c.name||''} onChange={e=>setContact(i,'name',e.target.value)} />
             </div>
             <div className="form-group" style={{ margin:0 }}>
               <input className="input" placeholder={L(`เบอร์โทร ${i+1}`,`Phone ${i+1}`)}
-                value={form.contacts?.[i]?.phone||''} onChange={e=>setContact(i,'phone',e.target.value)} />
+                value={c.phone||''} onChange={e=>setContact(i,'phone',e.target.value)} />
             </div>
+            {(form.contacts||[]).length > 1 && (
+              <button type="button" className="btn btn-ghost" style={{ padding:'8px 10px', color:'var(--err)', flexShrink:0 }}
+                onClick={()=>removeContact(i)}>🗑</button>
+            )}
           </div>
         ))}
       </div>
@@ -482,10 +498,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
         {inp('deliveryDays', L('ระยะส่ง (วัน)', 'Delivery Days'), 'number')}
         {inp('rating', L('คะแนน', 'Rating'), 'number')}
       </div>
-      <div className="form-row">
-        {inp('minOrder', L('ขั้นต่ำ (บาท)', 'Min Order (THB)'), 'number')}
-        {inp('category', L('ประเภทสินค้า', 'Category'))}
-      </div>
+      {inp('minOrder', L('ขั้นต่ำ (บาท)', 'Min Order (THB)'), 'number')}
 
       <div className="divider" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
