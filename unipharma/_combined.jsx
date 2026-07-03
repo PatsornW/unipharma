@@ -2697,9 +2697,6 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
   const [memo, setMemo] = useState(() => editPO?.memo || '');
   const [selectedDeal, setSelectedDeal] = useState('');
   const [dealDiscount, setDealDiscount] = useState(0);
-  const [showDealEditor, setShowDealEditor] = useState(false);
-  const [dealName, setDealName] = useState('');
-  const [dealPct, setDealPct] = useState('');
   const [items, setItems] = useState(() => editPO?.items ? editPO.items.map(it => ({ ...it, unitMode: 'select' })) : []);
   const [searchDrug, setSearchDrug] = useState('');
   const [isNonPO, setIsNonPO] = useState(() => !!editPO?.isNonPO);
@@ -2757,31 +2754,6 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     });
     if (best && bestCount > 0) setSelectedRep(best);
   }, [items]);
-
-  // Add a new deal, or edit the currently-selected one, and save it back to
-  // the supplier (cloud + app state) so every PO sees the latest promotions.
-  const saveDeal = async () => {
-    const name = (dealName || '').trim();
-    const pct = parseFloat(dealPct) || 0;
-    if (!name) { notify(L('กรุณาใส่ชื่อดีล', 'Please enter a deal name'), 'err'); return; }
-    if (!supplier) return;
-    const existing = (supplier.promotions || []).find(p => p.id === selectedDeal);
-    let promoId, promos;
-    if (existing) {
-      promoId = existing.id;
-      promos = (supplier.promotions || []).map(p => p.id === promoId ? { ...p, name, type: 'percent', discount: pct } : p);
-    } else {
-      promoId = 'P' + Date.now();
-      promos = [...(supplier.promotions || []), { id: promoId, name, type: 'percent', discount: pct }];
-    }
-    const updated = { ...supplier, promotions: promos };
-    if (setSuppliers) setSuppliers(prev => prev.map(s => s.id === supplier.id ? updated : s));
-    try { if (window.UNI_DB && window.UNI_DB.saveSupplier) await window.UNI_DB.saveSupplier(updated); } catch (e) { console.warn('saveDeal:', e); }
-    setSelectedDeal(promoId);
-    setDealDiscount(pct);
-    setShowDealEditor(false);
-    notify(existing ? L('แก้ไขดีลแล้ว ✓', 'Deal updated ✓') : L('เพิ่มดีลแล้ว ✓', 'Deal added ✓'), 'success');
-  };
 
   // Branch address in the current language (editable once filled).
   const branchAddr = (id) => {
@@ -2919,7 +2891,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
         branch, supplierId, poDate, deliveryDate,
         creditTerm: parseInt(creditTerm),
         deliveryBranch, location, memo, isNonPO,
-        dealNote: promo ? promo.name : (dealDiscount > 0 ? `ส่วนลด ${dealDiscount}%` : editPO.dealNote || '-'),
+        dealNote: promo ? (promo.buyQty > 0 ? `ซื้อ ${promo.buyQty} แถม ${promo.freeQty||0}${promo.discount>0?` ลด${promo.discount}%`:''}${promo.bonusItems?` · ${promo.bonusItems}`:''}` : (promo.name || `ส่วนลด ${promo.discount||0}%`)) : (dealDiscount > 0 ? `ส่วนลด ${dealDiscount}%` : editPO.dealNote || '-'),
         repId: selectedRep?.id || '',
         repName: selectedRep?.name || '',
         repBrand: selectedRep?.brand || '',
@@ -2950,7 +2922,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
       deliveryBranch,
       location,
       memo,
-      dealNote: promo ? promo.name : (dealDiscount > 0 ? `ส่วนลด ${dealDiscount}%` : '-'),
+      dealNote: promo ? (promo.buyQty > 0 ? `ซื้อ ${promo.buyQty} แถม ${promo.freeQty||0}${promo.discount>0?` ลด${promo.discount}%`:''}${promo.bonusItems?` · ${promo.bonusItems}`:''}` : (promo.name || `ส่วนลด ${promo.discount||0}%`)) : (dealDiscount > 0 ? `ส่วนลด ${dealDiscount}%` : '-'),
       repId: selectedRep?.id || '',
       repName: selectedRep?.name || '',
       repBrand: selectedRep?.brand || '',
@@ -3095,50 +3067,61 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
             </div>
           </div>
 
-          {/* Deal / Promotion — select, add, or edit (saved back to the supplier) */}
-          {supplier && (
+          {/* Deal / Promotion — show supplier's deals as selectable cards */}
+          {supplier && (supplier.promotions || []).length > 0 && (
             <div className="form-group">
-              <label className="label">🎁 {L('ดีล/โปรโมชั่น', 'Deal/Promotion')}</label>
-              <select className="input" value={selectedDeal} onChange={e => handleDealChange(e.target.value)}>
-                <option value="">{L('ไม่มีโปรโมชั่น', 'No promotion')}</option>
-                {(supplier.promotions || []).map(p => <option key={p.id} value={p.id}>{p.name} ({p.discount || 0}%)</option>)}
-              </select>
+              <label className="label">
+                🎁 {L('ดีล / โปรโมชั่น', 'Deals / Promotions')}
+                <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--txt4)', marginLeft: 6 }}>
+                  {L('คลิกเพื่อเลือก · คลิกซ้ำเพื่อยกเลิก', 'Click to select · click again to deselect')}
+                </span>
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(supplier.promotions || []).map(p => {
+                  const isSelected = selectedDeal === p.id;
+                  const isNewFmt = p.buyQty > 0 || p.freeQty > 0 || p.bonusItems || p.dealNote;
+                  return (
+                    <div key={p.id}
+                      onClick={() => handleDealChange(isSelected ? '' : p.id)}
+                      style={{ padding: '10px 14px', border: `1.5px solid ${isSelected ? 'var(--acc2)' : 'var(--border)'}`, borderRadius: 10, cursor: 'pointer', background: isSelected ? 'var(--acc-bg)' : 'var(--card2)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', transition: 'border-color .15s' }}>
+                      <div style={{ flex: 1 }}>
+                        {isNewFmt ? (
+                          <>
+                            {(p.buyQty > 0 || p.freeQty > 0) && (
+                              <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? 'var(--acc2)' : 'var(--ok)' }}>
+                                🎁 {lang === 'th' ? `ซื้อ ${p.buyQty || 0} → แถม ${p.freeQty || 0} ชิ้น` : `Buy ${p.buyQty || 0} → Free ${p.freeQty || 0} pcs`}
+                              </div>
+                            )}
+                            {p.discount > 0 && (
+                              <div style={{ fontSize: 12, color: 'var(--warn)', marginTop: 2 }}>
+                                💲 {L('ส่วนลดพิเศษ', 'Special Discount')} {p.discount}%
+                              </div>
+                            )}
+                            {p.bonusItems && (
+                              <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 3 }}>
+                                📦 {lang === 'th' ? 'ของแถม:' : 'Bonus:'} {p.bonusItems}
+                              </div>
+                            )}
+                            {p.dealNote && (
+                              <div style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 3, fontStyle: 'italic' }}>
+                                📝 {p.dealNote}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ fontWeight: 600, fontSize: 13, color: isSelected ? 'var(--acc2)' : 'var(--txt)' }}>
+                            🎁 {p.name}{p.discount > 0 ? ` — ${p.discount}%` : ''}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && <span style={{ color: 'var(--ok)', fontSize: 16, fontWeight: 700, marginLeft: 10 }}>✓</span>}
+                    </div>
+                  );
+                })}
+              </div>
               {dealDiscount > 0 && (
-                <div style={{ fontSize: 12, color: 'var(--ok)', marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--ok)', marginTop: 6 }}>
                   ✓ {L('ส่วนลด', 'Discount')} {dealDiscount}% {L('จะถูกคำนวณในยอดรวม', 'applied to total')}
-                </div>
-              )}
-
-              <button type="button" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12, marginTop: 8 }}
-                onClick={() => {
-                  const sel = (supplier.promotions || []).find(p => p.id === selectedDeal);
-                  setDealName(sel ? sel.name : '');
-                  setDealPct(sel ? (sel.discount || 0) : '');
-                  setShowDealEditor(s => !s);
-                }}>
-                {showDealEditor ? '▲' : '➕'} {selectedDeal ? L('แก้ไขดีลนี้', 'Edit this deal') : L('เพิ่มดีลใหม่', 'Add new deal')}
-              </button>
-
-              {showDealEditor && (
-                <div style={{ marginTop: 8, padding: 12, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                    <div className="form-group" style={{ flex: 2, margin: 0 }}>
-                      <label className="label" style={{ fontSize: 11 }}>{L('ชื่อดีล', 'Deal name')}</label>
-                      <input className="input" value={dealName} onChange={e => setDealName(e.target.value)}
-                        placeholder={L('เช่น ส่วนลด 5% สั่งเกิน 10,000', 'e.g., 5% off over 10,000')} />
-                    </div>
-                    <div className="form-group" style={{ width: 90, margin: 0 }}>
-                      <label className="label" style={{ fontSize: 11 }}>{L('ส่วนลด %', 'Discount %')}</label>
-                      <input className="input" type="number" value={dealPct} onChange={e => setDealPct(e.target.value)} />
-                    </div>
-                    <button type="button" className="btn btn-primary" style={{ padding: '8px 14px' }} onClick={saveDeal}>
-                      💾 {L('บันทึก', 'Save')}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--txt4)', marginTop: 8 }}>
-                    {L('บันทึกแล้วจะอยู่กับผู้จัดจำหน่ายนี้ และใช้ได้ทุกครั้งที่เปิด PO',
-                      'Saved to this supplier and available every time you open a PO')}
-                  </div>
                 </div>
               )}
             </div>
