@@ -84,6 +84,11 @@ const SUP_ALIASES = {
   minOrder:['minorder','min_order','ขั้นต่ำ','minimum_order','ยอดสั่งขั้นต่ำ'],
   returnPolicy:['returnpolicy','return_policy','นโยบายคืนสินค้า','return_th'],
   returnPolicyEN:['returnpolicyen','return_policy_en','return_policy_english','return_en'],
+  deal1_buyQty:['deal1_buyqty','deal1_buy'],deal1_freeQty:['deal1_freeqty','deal1_free'],deal1_bonusItems:['deal1_bonusitems','deal1_bonus'],deal1_discount:['deal1_discount','discount1'],deal1_note:['deal1_note','note1'],
+  deal2_buyQty:['deal2_buyqty','deal2_buy'],deal2_freeQty:['deal2_freeqty','deal2_free'],deal2_bonusItems:['deal2_bonusitems','deal2_bonus'],deal2_discount:['deal2_discount','discount2'],deal2_note:['deal2_note','note2'],
+  deal3_buyQty:['deal3_buyqty','deal3_buy'],deal3_freeQty:['deal3_freeqty','deal3_free'],deal3_bonusItems:['deal3_bonusitems','deal3_bonus'],deal3_discount:['deal3_discount','discount3'],deal3_note:['deal3_note','note3'],
+  deal4_buyQty:['deal4_buyqty','deal4_buy'],deal4_freeQty:['deal4_freeqty','deal4_free'],deal4_bonusItems:['deal4_bonusitems','deal4_bonus'],deal4_discount:['deal4_discount','discount4'],deal4_note:['deal4_note','note4'],
+  deal5_buyQty:['deal5_buyqty','deal5_buy'],deal5_freeQty:['deal5_freeqty','deal5_free'],deal5_bonusItems:['deal5_bonusitems','deal5_bonus'],deal5_discount:['deal5_discount','discount5'],deal5_note:['deal5_note','note5'],
 };
 
 function detectMap(headers, aliases) {
@@ -166,7 +171,14 @@ function parseSuppliers(rows, map) {
     minOrder:parseInt(r[map.minOrder])||5000, address:r[map.address]||'',
     category:r[map.category]||'ยาทั่วไป',
     returnPolicy:r[map.returnPolicy]||'', returnPolicyEN:r[map.returnPolicyEN]||'',
-    promotions:[], drugs:[]
+    promotions: [1,2,3,4,5].reduce((acc,n) => {
+      const buyQty=parseInt(r[map[`deal${n}_buyQty`]])||0, freeQty=parseInt(r[map[`deal${n}_freeQty`]])||0;
+      const discount=parseFloat(r[map[`deal${n}_discount`]])||0;
+      const bonusItems=r[map[`deal${n}_bonusItems`]]||'', dealNote=r[map[`deal${n}_note`]]||'';
+      if(buyQty>0||discount>0) acc.push({id:'DEAL'+Date.now()+n,buyQty,freeQty,bonusItems,discount,dealNote});
+      return acc;
+    },[]),
+    drugs:[]
   }));
 }
 
@@ -231,14 +243,16 @@ function downloadTemplate(type) {
 
   } else {
     const SUP_CATS = ['ยาทั่วไป','วิตามินและอาหารเสริม','เวชภัณฑ์และอุปกรณ์','ยาเฉพาะทาง','ยาสามัญประจำบ้าน'];
+    const dealHeaders = [1,2,3,4,5].flatMap(n=>[`deal${n}_buyQty`,`deal${n}_freeQty`,`deal${n}_bonusItems`,`deal${n}_discount`,`deal${n}_note`]);
+    const dealDesc    = [1,2,3,4,5].flatMap(n=>[`ซื้อ (ดีล ${n})`,`แถม (ดีล ${n})`,`ของแถม (ดีล ${n})`,`ลด% (ดีล ${n})`,`หมายเหตุ (ดีล ${n})`]);
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ['id','name','nameEN','contact','phone','email','taxId','creditTerm','deliveryDays','rating','address','category','minOrder','returnPolicy','returnPolicyEN'],
-      ['#คำอธิบาย','ชื่อบริษัท (ไทย)','ชื่อบริษัท (อังกฤษ)','ชื่อผู้ติดต่อ','เบอร์โทร','อีเมล','เลขผู้เสียภาษี (13 หลัก)','เครดิต (วัน)','ระยะส่ง (วัน)','คะแนน 1-5','ที่อยู่','ประเภท (เลือก ▼)','ยอดขั้นต่ำ (บาท)','นโยบายคืนสินค้า (ไทย)','Return Policy (English)'],
-      ['SUP001','บริษัท ยูนิไทย ฟาร์มา จำกัด','Unithai Pharma Co. Ltd.','คุณ สมชาย ใจดี','02-123-4567','contact@unithai.com','0105560012345',30,3,4.5,'123 ถนนพระราม9 กรุงเทพ','ยาทั่วไป',5000,'คืนได้ภายใน 7 วัน สินค้าต้องไม่เปิดซีล','Return within 7 days, unopened only'],
-      ['SUP002','บริษัท เมดิซัพพลาย จำกัด','Medisupply Co. Ltd.','คุณ สมหญิง รักดี','02-987-6543','info@medisupply.co.th','0105561098765',45,5,4.0,'456 ถนนวิทยุ กรุงเทพ','วิตามินและอาหารเสริม',10000,'ไม่รับคืนสินค้า','No returns accepted'],
+      ['id','name','nameEN','contact','phone','email','taxId','creditTerm','deliveryDays','rating','address','category','minOrder','returnPolicy','returnPolicyEN',...dealHeaders],
+      ['#คำอธิบาย','ชื่อบริษัท (ไทย)','ชื่อบริษัท (อังกฤษ)','ชื่อผู้ติดต่อ','เบอร์โทร','อีเมล','เลขผู้เสียภาษี (13 หลัก)','เครดิต (วัน)','ระยะส่ง (วัน)','คะแนน 1-5','ที่อยู่','ประเภท (เลือก ▼)','ยอดขั้นต่ำ (บาท)','นโยบายคืนสินค้า (ไทย)','Return Policy (English)',...dealDesc],
+      ['SUP001','บริษัท ยูนิไทย ฟาร์มา จำกัด','Unithai Pharma Co. Ltd.','คุณ สมชาย ใจดี','02-123-4567','contact@unithai.com','0105560012345',30,3,4.5,'123 ถนนพระราม9 กรุงเทพ','ยาทั่วไป',5000,'คืนได้ภายใน 7 วัน สินค้าต้องไม่เปิดซีล','Return within 7 days, unopened only', 10,1,'','','ซื้อ 10 แถม 1', 20,3,'',5,'ซื้อ 20 แถม 3 ลด 5%', '','','','','', '','','','','', '','','','',''],
+      ['SUP002','บริษัท เมดิซัพพลาย จำกัด','Medisupply Co. Ltd.','คุณ สมหญิง รักดี','02-987-6543','info@medisupply.co.th','0105561098765',45,5,4.0,'456 ถนนวิทยุ กรุงเทพ','วิตามินและอาหารเสริม',10000,'ไม่รับคืนสินค้า','No returns accepted', 5,1,'Gluco 1 กล่อง','','ซื้อ 5 แถม Gluco', 10,2,'',3,'ซื้อ 10 แถม 2 ลด 3%', 20,5,'',5,'ซื้อ 20 แถม 5 ลด 5%', '','','','','', '','','','',''],
     ]);
-    ws['!cols'] = [10,28,26,18,14,24,16,10,10,8,28,20,14,32,32].map(wch=>({wch}));
+    ws['!cols'] = [10,28,26,18,14,24,16,10,10,8,28,20,14,32,32, ...Array(25).fill(null).map((_,i)=>i%5===2?16:i%5===4?18:8)].map(wch=>({wch}));
     ws['!views'] = [{ state:'frozen', xSplit:0, ySplit:1 }];
 
     const listsWs = XLSX.utils.aoa_to_sheet([['ประเภทสินค้า'], ...SUP_CATS.map(c=>[c])]);
