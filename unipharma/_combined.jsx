@@ -4148,6 +4148,10 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
 
   const reps = form.reps || [];
   const [repDrugSearches, setRepDrugSearches] = useState({});
+  const promoDragSrc = useRef(null);
+  const [promoDragOver, setPromoDragOver] = useState(null);
+  const repDragSrc = useRef(null);
+  const [repDragOver, setRepDragOver] = useState(null);
   const addRep = () => setForm(f => ({ ...f, reps: [...(f.reps||[]), { id:'REP'+Date.now(), name:'', brand:'', brandEN:'', phone:'', drugs:[] }] }));
   const updateRep = (id, k, v) => setForm(f => ({ ...f, reps: (f.reps||[]).map(r => r.id===id ? {...r,[k]:v} : r) }));
   const removeRep = (id) => setForm(f => ({ ...f, reps: (f.reps||[]).filter(r => r.id!==id) }));
@@ -4230,9 +4234,22 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
       {promos.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--txt4)', marginBottom: 8 }}>{L('ยังไม่มีดีล — กด + เพิ่มดีล', 'No deals yet — click + Add Deal')}</div>
       )}
-      {promos.map(p => (
-        <div key={p.id} style={{ background:'var(--card2)', border:'1px solid var(--bdr)', borderRadius:8, padding:12, marginBottom:10 }}>
+      {promos.map((p, idx) => (
+        <div key={p.id}
+          draggable="true"
+          onDragStart={() => { promoDragSrc.current = idx; }}
+          onDragOver={e => { e.preventDefault(); setPromoDragOver(idx); }}
+          onDrop={e => {
+            e.preventDefault();
+            const src = promoDragSrc.current;
+            promoDragSrc.current = null; setPromoDragOver(null);
+            if (src === null || src === idx) return;
+            setForm(f => { const a=[...f.promotions]; const [m]=a.splice(src,1); a.splice(idx,0,m); return {...f,promotions:a}; });
+          }}
+          onDragEnd={() => { promoDragSrc.current = null; setPromoDragOver(null); }}
+          style={{ background:'var(--card2)', border:`1px solid ${promoDragOver===idx?'var(--acc2)':'var(--bdr)'}`, borderRadius:8, padding:12, marginBottom:10 }}>
           <div style={{ display:'flex', gap:8, alignItems:'flex-end', marginBottom:8 }}>
+            <span title={L('ลากเพื่อเรียงลำดับ','Drag to reorder')} style={{ color:'var(--txt4)', fontSize:16, opacity:0.4, cursor:'grab', userSelect:'none', paddingBottom:8, flexShrink:0 }}>⠿</span>
             <div className="form-group" style={{ width:90, margin:0 }}>
               <label className="label" style={{ fontSize:11 }}>{L('ซื้อ (จำนวน)', 'Buy (qty)')}</label>
               <input className="input" type="number" min="0" value={p.buyQty||0} onChange={e => updatePromo(p.id,'buyQty',parseInt(e.target.value)||0)} />
@@ -4288,7 +4305,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
       {reps.length === 0 && (
         <div style={{ fontSize:12, color:'var(--txt4)', marginBottom:8 }}>{L('ยังไม่มีผู้แทน — กด + เพิ่มผู้แทน','No reps yet — click + Add Rep')}</div>
       )}
-      {reps.map(r => {
+      {reps.map((r, idx) => {
         const repSearch = repDrugSearches[r.id] || '';
         const repDrugs = r.drugs || [];
         const repSearchResults = repSearch.length > 0
@@ -4299,8 +4316,21 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
             )).slice(0, 10)
           : [];
         return (
-          <div key={r.id} style={{ marginBottom:10, padding:'10px 12px', background:'var(--card2)', borderRadius:10, border:'1px solid var(--border)' }}>
+          <div key={r.id}
+            draggable="true"
+            onDragStart={() => { repDragSrc.current = idx; }}
+            onDragOver={e => { e.preventDefault(); setRepDragOver(idx); }}
+            onDrop={e => {
+              e.preventDefault();
+              const src = repDragSrc.current;
+              repDragSrc.current = null; setRepDragOver(null);
+              if (src === null || src === idx) return;
+              setForm(f => { const a=[...f.reps]; const [m]=a.splice(src,1); a.splice(idx,0,m); return {...f,reps:a}; });
+            }}
+            onDragEnd={() => { repDragSrc.current = null; setRepDragOver(null); }}
+            style={{ marginBottom:10, padding:'10px 12px', background:'var(--card2)', borderRadius:10, border:`1px solid ${repDragOver===idx?'var(--acc2)':'var(--border)'}` }}>
             <div style={{ display:'flex', gap:8, alignItems:'flex-end', marginBottom:8 }}>
+              <span title={L('ลากเพื่อเรียงลำดับ','Drag to reorder')} style={{ color:'var(--txt4)', fontSize:16, opacity:0.4, cursor:'grab', userSelect:'none', paddingBottom:8, flexShrink:0 }}>⠿</span>
               <div className="form-group" style={{ flex:2, margin:0 }}>
                 <label className="label" style={{ fontSize:11 }}>{L('ชื่อผู้แทน','Rep Name')}</label>
                 <input className="input" value={r.name||''} onChange={e=>updateRep(r.id,'name',e.target.value)} placeholder={L('เช่น คุณนิ้ง','e.g. Ning')} />
