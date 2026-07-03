@@ -221,8 +221,8 @@ function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit
           <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
             {sup.reps.map(r => (
               <div key={r.id} style={{ background:'var(--card2)', border:'1px solid var(--bdr)', borderRadius:8, padding:'8px 12px', minWidth:140 }}>
-                <div style={{ fontWeight:600, fontSize:13 }}>{r.name}</div>
-                <div style={{ fontSize:11, color:'var(--acc2)', marginTop:2 }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                <div style={{ fontWeight:700, fontSize:12, color:'var(--acc2)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                <div style={{ fontSize:13, color:'var(--txt)', marginTop:2 }}>{r.name}</div>
                 {r.phone && <div style={{ fontSize:11, color:'var(--txt3)', marginTop:2 }}>📞 {r.phone}</div>}
               </div>
             ))}

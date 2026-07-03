@@ -3090,8 +3090,8 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         <div key={r.id}
                           onClick={() => setSelectedRep(isSelected ? null : r)}
                           style={{ padding:'8px 12px', border:`1px solid ${isSelected?'var(--acc2)':'var(--bdr)'}`, borderRadius:8, cursor:'pointer', background:isSelected?'var(--acc-bg)':'var(--card2)' }}>
-                          <div style={{ fontWeight:600, fontSize:12, color:isSelected?'var(--acc2)':'var(--txt)' }}>{r.name}</div>
-                          <div style={{ fontSize:11, color:'var(--txt3)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                          <div style={{ fontWeight:700, fontSize:11, color:isSelected?'var(--acc2)':'var(--ok)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                          <div style={{ fontSize:12, color:'var(--txt)' }}>{r.name}</div>
                           {r.phone && <div style={{ fontSize:10, color:'var(--txt4)' }}>{r.phone}</div>}
                           {matchCount > 0 && (
                             <div style={{ fontSize:10, color:'var(--ok)', marginTop:2 }}>
@@ -3923,8 +3923,8 @@ function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit
           <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
             {sup.reps.map(r => (
               <div key={r.id} style={{ background:'var(--card2)', border:'1px solid var(--bdr)', borderRadius:8, padding:'8px 12px', minWidth:140 }}>
-                <div style={{ fontWeight:600, fontSize:13 }}>{r.name}</div>
-                <div style={{ fontSize:11, color:'var(--acc2)', marginTop:2 }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                <div style={{ fontWeight:700, fontSize:12, color:'var(--acc2)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                <div style={{ fontSize:13, color:'var(--txt)', marginTop:2 }}>{r.name}</div>
                 {r.phone && <div style={{ fontSize:11, color:'var(--txt3)', marginTop:2 }}>📞 {r.phone}</div>}
               </div>
             ))}
