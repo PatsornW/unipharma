@@ -4091,9 +4091,10 @@ function DealEditorModal({ lang, L, drugs, supId, initialDrugCode, initialDeal, 
 function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   const isEdit = !!sup;
   const [form, setForm] = useState(() => {
-    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[], repDrugDeals:[] };
+    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[] };
     const existingContacts = (sup.contacts||[]).filter(c=>c.name||c.phone);
-    return { ...sup, contacts: existingContacts.length ? existingContacts : (sup.contact ? [{name:sup.contact,phone:sup.phone||''}] : [{name:'',phone:''}]), returnPolicy: sup.returnPolicy||'', returnPolicyEN: sup.returnPolicyEN||'', reps: (sup.reps||[]).map(r=>({...r, drugs:r.drugs||[]})), repDrugDeals: sup.repDrugDeals||[] };
+    const migrateRepDrugs = ds => (ds||[]).map(d => typeof d === 'string' ? {code:d, buyQty:0, freeQty:0, discount:0, note:'', returnPolicy:''} : d);
+    return { ...sup, contacts: existingContacts.length ? existingContacts : (sup.contact ? [{name:sup.contact,phone:sup.phone||''}] : [{name:'',phone:''}]), returnPolicy: sup.returnPolicy||'', returnPolicyEN: sup.returnPolicyEN||'', reps: (sup.reps||[]).map(r=>({...r, drugs:migrateRepDrugs(r.drugs)})) };
   });
   const [drugSearch, setDrugSearch] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -4116,10 +4117,6 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   const updatePromo = (id, k, v) => setForm(f => ({ ...f, promotions: (f.promotions || []).map(p => p.id === id ? { ...p, [k]: v } : p) }));
   const removePromo = (id) => setForm(f => ({ ...f, promotions: (f.promotions || []).filter(p => p.id !== id) }));
 
-  const addRepDrugDeal = () => setForm(f => ({...f, repDrugDeals:[...(f.repDrugDeals||[]),{id:'RDD'+Date.now(),drugCode:'',repId:'',buyQty:0,freeQty:0,discount:0,note:'',returnPolicy:''}]}));
-  const updRDD = (id,k,v) => setForm(f => ({...f, repDrugDeals:(f.repDrugDeals||[]).map(d=>d.id===id?{...d,[k]:v}:d)}));
-  const removeRDD = (id) => setForm(f => ({...f, repDrugDeals:(f.repDrugDeals||[]).filter(d=>d.id!==id)}));
-
   const reps = form.reps || [];
   const [repDrugSearches, setRepDrugSearches] = useState({});
   const promoDragSrc = useRef(null);
@@ -4130,8 +4127,17 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   const updateRep = (id, k, v) => setForm(f => ({ ...f, reps: (f.reps||[]).map(r => r.id===id ? {...r,[k]:v} : r) }));
   const removeRep = (id) => setForm(f => ({ ...f, reps: (f.reps||[]).filter(r => r.id!==id) }));
   const setRepDrugSearch = (repId, val) => setRepDrugSearches(s => ({...s, [repId]: val}));
-  const addRepDrug = (repId, code) => { setForm(f => ({...f, reps:(f.reps||[]).map(r => r.id===repId ? {...r, drugs:[...new Set([...(r.drugs||[]),code])]} : r)})); setRepDrugSearch(repId,''); };
-  const removeRepDrug = (repId, code) => setForm(f => ({...f, reps:(f.reps||[]).map(r => r.id===repId ? {...r, drugs:(r.drugs||[]).filter(c=>c!==code)} : r)}));
+  const addRepDrug = (repId, code) => {
+    setForm(f => ({...f, reps:(f.reps||[]).map(r => {
+      if (r.id !== repId) return r;
+      const existing = r.drugs||[];
+      if (existing.find(d=>d.code===code)) return r;
+      return {...r, drugs:[...existing, {code, buyQty:0, freeQty:0, discount:0, note:'', returnPolicy:''}]};
+    })}));
+    setRepDrugSearch(repId,'');
+  };
+  const removeRepDrug = (repId, code) => setForm(f => ({...f, reps:(f.reps||[]).map(r => r.id===repId ? {...r, drugs:(r.drugs||[]).filter(d=>d.code!==code)} : r)}));
+  const updRepDrug = (repId, code, k, v) => setForm(f => ({...f, reps:(f.reps||[]).map(r => r.id===repId ? {...r, drugs:(r.drugs||[]).map(d=>d.code===code?{...d,[k]:v}:d)} : r)}));
 
   const addDrug = (drug) => {
     setForm(f => ({
@@ -4289,7 +4295,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
         const repSearch = repDrugSearches[r.id] || '';
         const repDrugs = r.drugs || [];
         const repSearchResults = repSearch.length > 0
-          ? allDrugs.filter(d => !repDrugs.includes(d.code) && (
+          ? allDrugs.filter(d => !repDrugs.find(x=>x.code===d.code) && (
               d.code.toLowerCase().includes(repSearch.toLowerCase()) ||
               (d.nameTH||'').includes(repSearch) ||
               (d.nameEN||'').toLowerCase().includes(repSearch.toLowerCase())
@@ -4335,21 +4341,47 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
                 📦 {L('สินค้าที่ดูแล','Products Managed')}
                 <span style={{ fontWeight:400, marginLeft:6, color:'var(--txt4)' }}>({repDrugs.length} {L('รายการ','items')})</span>
               </div>
-              {repDrugs.length > 0 && (
-                <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:6 }}>
-                  {repDrugs.map(code => {
-                    const d = allDrugs.find(x=>x.code===code);
-                    return (
-                      <span key={code} style={{ background:'var(--acc-bg)', color:'var(--acc2)', borderRadius:99, fontSize:11, padding:'2px 8px 2px 10px', display:'inline-flex', alignItems:'center', gap:4 }}>
-                        <span style={{ fontFamily:'monospace' }}>{code}</span>
-                        {d && <span style={{ color:'var(--txt3)', fontSize:10 }}>{d.nameTH}</span>}
-                        <button type="button" onClick={()=>removeRepDrug(r.id,code)}
-                          style={{ background:'none', border:'none', cursor:'pointer', padding:'0 2px', color:'var(--txt3)', fontSize:13, lineHeight:1 }}>×</button>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+              {repDrugs.map(drug => {
+                const d = allDrugs.find(x=>x.code===drug.code);
+                return (
+                  <div key={drug.code} style={{ border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', marginBottom:6, background:'var(--bg1)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                      <span style={{ background:'var(--acc-bg)', color:'var(--acc2)', borderRadius:99, fontSize:11, padding:'2px 8px', fontFamily:'monospace', flexShrink:0 }}>{drug.code}</span>
+                      <span style={{ fontSize:11, color:'var(--txt2)', flex:1 }}>{d?.nameTH}</span>
+                      <button type="button" onClick={()=>removeRepDrug(r.id,drug.code)}
+                        style={{ background:'none', border:'none', cursor:'pointer', padding:'0 4px', color:'var(--txt4)', fontSize:14, lineHeight:1 }}>×</button>
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'70px 70px 70px 1fr', gap:5, marginBottom:5 }}>
+                      <div>
+                        <div style={{ fontSize:9, color:'var(--txt4)', marginBottom:2 }}>{L('ซื้อ (ชิ้น)','Buy')}</div>
+                        <input className="input" type="number" min="0" value={drug.buyQty||0} style={{ fontSize:11 }}
+                          onChange={e=>updRepDrug(r.id,drug.code,'buyQty',parseInt(e.target.value)||0)} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:9, color:'var(--txt4)', marginBottom:2 }}>{L('แถม (ชิ้น)','Free')}</div>
+                        <input className="input" type="number" min="0" value={drug.freeQty||0} style={{ fontSize:11 }}
+                          onChange={e=>updRepDrug(r.id,drug.code,'freeQty',parseInt(e.target.value)||0)} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:9, color:'var(--txt4)', marginBottom:2 }}>{L('ส่วนลด %','Disc%')}</div>
+                        <input className="input" type="number" min="0" max="100" value={drug.discount||0} style={{ fontSize:11 }}
+                          onChange={e=>updRepDrug(r.id,drug.code,'discount',parseFloat(e.target.value)||0)} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:9, color:'var(--txt4)', marginBottom:2 }}>{L('หมายเหตุดีล','Deal Note')}</div>
+                        <input className="input" value={drug.note||''} style={{ fontSize:11 }}
+                          onChange={e=>updRepDrug(r.id,drug.code,'note',e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize:9, color:'var(--txt4)', marginBottom:2 }}>↩ {L('นโยบายการคืน','Return Policy')}</div>
+                      <input className="input" value={drug.returnPolicy||''} style={{ fontSize:11 }}
+                        onChange={e=>updRepDrug(r.id,drug.code,'returnPolicy',e.target.value)}
+                        placeholder={L('เช่น คืนได้ภายใน 7 วัน...','e.g. return within 7 days...')} />
+                    </div>
+                  </div>
+                );
+              })}
               <div style={{ position:'relative' }}>
                 <input className="input" style={{ fontSize:12 }} value={repSearch}
                   onChange={e=>setRepDrugSearch(r.id,e.target.value)}
@@ -4453,65 +4485,6 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
         </div>
       )}
 
-      {/* ── Section 11: Per-drug per-rep deals + return policy ── */}
-      <div className="divider" />
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-        <label className="label" style={{ margin:0 }}>🏷 {L('ดีลต่อสินค้า (แยกตามผู้แทน)','Per-Drug Deals (by Rep)')}</label>
-        <button type="button" className="btn btn-ghost" style={{ padding:'4px 10px', fontSize:12 }} onClick={addRepDrugDeal}>
-          + {L('เพิ่มดีลสินค้า','Add Drug Deal')}
-        </button>
-      </div>
-      {(form.repDrugDeals||[]).length === 0 && (
-        <div style={{ fontSize:12, color:'var(--txt4)', marginBottom:8 }}>
-          {L('ยังไม่มีดีลต่อสินค้า — กด + เพิ่มดีลสินค้า','No per-drug deals yet — click + Add Drug Deal')}
-        </div>
-      )}
-      {(form.repDrugDeals||[]).map(d => {
-        const drug = allDrugs.find(x=>x.code===d.drugCode);
-        return (
-          <div key={d.id} style={{ background:'var(--card2)', border:'1px solid var(--bdr)', borderRadius:10, padding:12, marginBottom:10 }}>
-            <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
-              {drug && <span style={{ background:'var(--acc-bg)', color:'var(--acc2)', borderRadius:99, fontSize:11, padding:'2px 8px', fontFamily:'monospace', flexShrink:0 }}>{d.drugCode}</span>}
-              <div style={{ flex:1 }}>
-                {drug
-                  ? <div style={{ fontSize:12, fontWeight:600 }}>{lang==='th'?drug.nameTH:(drug.nameEN||drug.nameTH)}</div>
-                  : <select className="input" value={d.drugCode} onChange={e=>updRDD(d.id,'drugCode',e.target.value)} style={{ fontSize:12 }}>
-                      <option value="">{L('เลือกสินค้า...','Select drug...')}</option>
-                      {drugList.map(code=>{ const dr=allDrugs.find(x=>x.code===code); return dr?<option key={code} value={code}>{code} — {dr.nameTH}</option>:null; })}
-                    </select>
-                }
-              </div>
-              <select className="input" value={d.repId} onChange={e=>updRDD(d.id,'repId',e.target.value)} style={{ fontSize:11, maxWidth:180, flexShrink:0 }}>
-                <option value="">{L('เลือกผู้แทน...','Select rep...')}</option>
-                {(form.reps||[]).map(r=><option key={r.id} value={r.id}>{lang==='th'?(r.brand||r.brandEN):(r.brandEN||r.brand)} · {r.name}</option>)}
-              </select>
-              <button type="button" className="btn btn-ghost" style={{ padding:'6px 8px', color:'var(--err)', flexShrink:0 }} onClick={()=>removeRDD(d.id)}>🗑</button>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'80px 80px 80px 1fr', gap:8, marginBottom:8 }}>
-              <div className="form-group" style={{ margin:0 }}>
-                <label className="label" style={{ fontSize:10 }}>{L('ซื้อ (ชิ้น)','Buy')}</label>
-                <input className="input" type="number" min="0" value={d.buyQty||0} onChange={e=>updRDD(d.id,'buyQty',parseInt(e.target.value)||0)} />
-              </div>
-              <div className="form-group" style={{ margin:0 }}>
-                <label className="label" style={{ fontSize:10 }}>{L('แถม (ชิ้น)','Free')}</label>
-                <input className="input" type="number" min="0" value={d.freeQty||0} onChange={e=>updRDD(d.id,'freeQty',parseInt(e.target.value)||0)} />
-              </div>
-              <div className="form-group" style={{ margin:0 }}>
-                <label className="label" style={{ fontSize:10 }}>{L('ส่วนลด %','Disc%')}</label>
-                <input className="input" type="number" min="0" max="100" value={d.discount||0} onChange={e=>updRDD(d.id,'discount',parseFloat(e.target.value)||0)} />
-              </div>
-              <div className="form-group" style={{ margin:0 }}>
-                <label className="label" style={{ fontSize:10 }}>{L('หมายเหตุดีล','Deal Note')}</label>
-                <input className="input" value={d.note||''} onChange={e=>updRDD(d.id,'note',e.target.value)} placeholder={L('เงื่อนไข เช่น แจ้งล่วงหน้า...','e.g. notify in advance...')} />
-              </div>
-            </div>
-            <div className="form-group" style={{ margin:0 }}>
-              <label className="label" style={{ fontSize:10 }}>↩ {L('นโยบายการคืนสินค้า (รายการนี้)','Return Policy (this item)')}</label>
-              <input className="input" value={d.returnPolicy||''} onChange={e=>updRDD(d.id,'returnPolicy',e.target.value)} placeholder={L('เช่น คืนได้ภายใน 7 วัน หากสินค้าเสียหาย','e.g. return within 7 days if damaged')} />
-            </div>
-          </div>
-        );
-      })}
     </Modal>
   );
 }
