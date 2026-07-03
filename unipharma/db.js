@@ -173,11 +173,11 @@
 
       // Cache TTLs
       // DRUGS:     IndexedDB, 24 h — master data rarely changes; localStorage can't hold 10k+ drugs (~15 MB)
-      // SUPPLIERS: localStorage, 30 min — small data, but always-fresh was a major egress driver
-      // ORDERS:    localStorage, 10 min — moderate size, reasonable staleness
+      // SUPPLIERS: localStorage, 6 h  — small data; extended to cut Supabase egress
+      // ORDERS:    localStorage, 1 h  — moderate size; extended to cut Supabase egress
       var DRUG_CACHE_TTL     = 24 * 3600 * 1000;
-      var SUPPLIER_CACHE_TTL = 30 * 60  * 1000;
-      var ORDER_CACHE_TTL    = 10 * 60  * 1000;
+      var SUPPLIER_CACHE_TTL =  6 * 3600 * 1000;
+      var ORDER_CACHE_TTL    =  1 * 3600 * 1000;
       var now = Date.now();
 
       // ── Read caches ──────────────────────────────────────────
@@ -500,6 +500,35 @@
         if (res.error) throw res.error;
         return res.data || [];
       } catch(e) { console.warn('[UNI_DB] loadPriceHistory:', e); return []; }
+    },
+    // CW Pharma stock — cached in IndexedDB, 6 h TTL (sync runs 10:00 + 18:00)
+    // Shared by Drugs.jsx and CreatePO.jsx so the table is never fetched twice per session.
+    async loadCwStock() {
+      if (!enabled) return null;
+      var CW_TTL = 6 * 3600 * 1000;
+      var now = Date.now();
+      var ts = parseInt(localStorage.getItem('uni_cw_idb_ts') || '0', 10);
+      if (ts && (now - ts) < CW_TTL) {
+        var cached = await idbGet('cwstock');
+        if (cached && cached.length) {
+          console.info('[UNI_DB] CW stock cache hit — ' + cached.length + ' items (' + Math.round((now - ts) / 60000) + 'min old)');
+          return cached;
+        }
+      }
+      try {
+        var res = await client.from('cwpharma_stock_test')
+          .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+          .limit(15000);
+        if (res.error) throw res.error;
+        var data = res.data || [];
+        await idbSet('cwstock', data);
+        try { localStorage.setItem('uni_cw_idb_ts', Date.now().toString()); } catch(e) {}
+        console.info('[UNI_DB] CW stock fetched — ' + data.length + ' items');
+        return data;
+      } catch(e) {
+        console.warn('[UNI_DB] loadCwStock:', e && (e.message || String(e)));
+        return null;
+      }
     },
 
     // Live subscription for the out_of_stock table. cb() is called on any change.

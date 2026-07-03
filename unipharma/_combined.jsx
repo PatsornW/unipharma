@@ -496,8 +496,8 @@ const UTILS = (() => {
       if (!enabled) return null;
 
       var DRUG_CACHE_TTL     = 24 * 3600 * 1000;
-      var SUPPLIER_CACHE_TTL = 30 * 60  * 1000;
-      var ORDER_CACHE_TTL    = 10 * 60  * 1000;
+      var SUPPLIER_CACHE_TTL =  6 * 3600 * 1000;
+      var ORDER_CACHE_TTL    =  1 * 3600 * 1000;
       var now = Date.now();
 
       // ── Read caches ──────────────────────────────────────────
@@ -769,6 +769,34 @@ const UTILS = (() => {
         if (res.error) throw res.error;
         return true;
       } catch (e) { console.warn("[UNI_DB] setOutOfStockResolved:", e); return false; }
+    },
+    // CW Pharma stock — cached in IndexedDB, 6 h TTL (sync runs 10:00 + 18:00)
+    async loadCwStock() {
+      if (!enabled) return null;
+      var CW_TTL = 6 * 3600 * 1000;
+      var now = Date.now();
+      var ts = parseInt(localStorage.getItem('uni_cw_idb_ts') || '0', 10);
+      if (ts && (now - ts) < CW_TTL) {
+        var cached = await idbGet('cwstock');
+        if (cached && cached.length) {
+          console.info('[UNI_DB] CW stock cache hit — ' + cached.length + ' items (' + Math.round((now - ts) / 60000) + 'min old)');
+          return cached;
+        }
+      }
+      try {
+        var res = await client.from('cwpharma_stock_test')
+          .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+          .limit(15000);
+        if (res.error) throw res.error;
+        var data = res.data || [];
+        await idbSet('cwstock', data);
+        try { localStorage.setItem('uni_cw_idb_ts', Date.now().toString()); } catch(e) {}
+        console.info('[UNI_DB] CW stock fetched — ' + data.length + ' items');
+        return data;
+      } catch(e) {
+        console.warn('[UNI_DB] loadCwStock:', e && (e.message || String(e)));
+        return null;
+      }
     },
     // Live subscription for the out_of_stock table. cb() is called on any change.
     onOutOfStockChange(cb) {
@@ -2687,22 +2715,15 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
   const didInit = useRef(false);
   useEffect(() => { didInit.current = true; }, []);
 
-  // Load CW Pharma stock data on mount
+  // Load CW Pharma stock — cached in IDB via UNI_DB.loadCwStock (6 h TTL)
   useEffect(() => {
-    const cfg = window.UNI_CONFIG || {};
-    const url = (cfg.SUPABASE_URL || '').trim();
-    const key = (cfg.SUPABASE_ANON_KEY || '').trim();
-    if (!url || !key || !window.supabase) return;
-    const sb = window.supabase.createClient(url, key);
-    sb.from('cwpharma_stock_test')
-      .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02')
-      .limit(15000)
-      .then(({ data, error }) => {
-        if (error || !data || !data.length) return;
-        const map = {};
-        data.forEach(r => { map[r.code] = r; });
-        setCwStock(map);
-      });
+    if (!window.UNI_DB || !window.UNI_DB.enabled) return;
+    window.UNI_DB.loadCwStock().then(data => {
+      if (!data || !data.length) return;
+      const map = {};
+      data.forEach(r => { map[r.code] = r; });
+      setCwStock(map);
+    });
   }, []);
 
   const supplier = useMemo(() => suppliers.find(s => s.id === supplierId), [suppliers, supplierId]);

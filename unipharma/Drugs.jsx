@@ -25,23 +25,16 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
 
-  // Load CW Pharma stock data (cwpharma_stock_test) on mount
+  // Load CW Pharma stock — cached in IDB via UNI_DB.loadCwStock (6 h TTL)
   useEffect(() => {
-    const cfg = window.UNI_CONFIG || {};
-    const url = (cfg.SUPABASE_URL || '').trim();
-    const key = (cfg.SUPABASE_ANON_KEY || '').trim();
-    if (!url || !key || !window.supabase) return;
-    const sb = window.supabase.createClient(url, key);
-    sb.from('cwpharma_stock_test')
-      .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
-      .limit(15000)
-      .then(({ data, error }) => {
-        if (error || !data || !data.length) return;
-        const map = {};
-        data.forEach(r => { map[r.code] = r; });
-        setCwStock(map);
-        setCwSyncedAt(data[0].synced_at);
-      });
+    if (!window.UNI_DB || !window.UNI_DB.enabled) return;
+    window.UNI_DB.loadCwStock().then(data => {
+      if (!data || !data.length) return;
+      const map = {};
+      data.forEach(r => { map[r.code] = r; });
+      setCwStock(map);
+      setCwSyncedAt(data[0].synced_at);
+    });
   }, []);
 
   // Count items available per branch (stock > 0)
