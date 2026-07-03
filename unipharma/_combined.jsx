@@ -976,57 +976,20 @@ function LoginScreen({ L, lang, setLang, onSignedIn }) {
 /* ===== components.jsx ===== */
 // components.jsx — Shared UI Components
 
-/* ── Modal (draggable) ── */
+/* ── Modal ── */
 function Modal({ title, onClose, children, footer, size = 600 }) {
-  const [pos, setPos] = useState(null);
-  const isDragging = useRef(false);
-  const offset = useRef({ x: 0, y: 0 });
-  const modalRef = useRef(null);
-
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  useEffect(() => { setPos(null); }, [title]);
-
-  const handleHeaderMouseDown = e => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const rect = modalRef.current.getBoundingClientRect();
-    offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    isDragging.current = true;
-    const onMove = ev => {
-      if (!isDragging.current) return;
-      const x = Math.max(0, Math.min(ev.clientX - offset.current.x, window.innerWidth - 120));
-      const y = Math.max(0, Math.min(ev.clientY - offset.current.y, window.innerHeight - 60));
-      setPos({ x, y });
-    };
-    const onUp = () => {
-      isDragging.current = false;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  };
-
   return (
-    <div className="modal-overlay" style={pos ? { pointerEvents:'none' } : {}}>
-      <div className="modal" ref={modalRef}
-        style={{ maxWidth:size, pointerEvents:'auto',
-          ...(pos ? { position:'fixed', left:pos.x, top:pos.y, margin:0, transform:'none', animation:'none' } : {}) }}>
-        <div className="modal-header"
-          onMouseDown={handleHeaderMouseDown}
-          style={{ cursor:'grab', userSelect:'none' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ color:'var(--txt4)', fontSize:14, letterSpacing:2, opacity:0.6 }}>⠿</span>
-            <span className="modal-title">{title}</span>
-          </div>
-          <button className="btn-icon" onClick={onClose}
-            onMouseDown={e => e.stopPropagation()}
-            style={{ border:'none', fontSize:18 }}>✕</button>
+    <div className="modal-overlay">
+      <div className="modal" style={{ maxWidth:size }}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="btn-icon" onClick={onClose} style={{ border:'none', fontSize:18 }}>✕</button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
