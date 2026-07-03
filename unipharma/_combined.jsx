@@ -4217,9 +4217,15 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
               <div style={{ position:'relative' }}>
                 <input className="input" style={{ fontSize:12 }} value={repSearch}
                   onChange={e=>setRepDrugSearch(r.id,e.target.value)}
-                  placeholder={L('ค้นหาสินค้าเพื่อเพิ่ม (รหัส / ชื่อ)…','Search drug to add (code / name)…')} />
+                  placeholder={allDrugs.length===0 ? L('ยังไม่มีข้อมูลยาในระบบ','No drug data in system') : L('ค้นหาสินค้าเพื่อเพิ่ม (รหัส / ชื่อ)…','Search drug to add (code / name)…')}
+                  disabled={allDrugs.length===0} />
+                {repSearch.length > 0 && repSearchResults.length === 0 && allDrugs.length > 0 && (
+                  <div style={{ position:'absolute', bottom:'100%', left:0, right:0, marginBottom:2, background:'var(--bg1)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'var(--txt4)', zIndex:40, boxShadow:'0 6px 18px rgba(0,0,0,.2)' }}>
+                    {L('ไม่พบสินค้าที่ตรงกัน','No matching drugs found')}
+                  </div>
+                )}
                 {repSearchResults.length > 0 && (
-                  <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:2, background:'var(--bg1)', border:'1px solid var(--border)', borderRadius:8, maxHeight:180, overflowY:'auto', zIndex:40, boxShadow:'0 6px 18px rgba(0,0,0,.2)' }}>
+                  <div style={{ position:'absolute', bottom:'100%', left:0, right:0, marginBottom:2, background:'var(--bg1)', border:'1px solid var(--border)', borderRadius:8, maxHeight:180, overflowY:'auto', zIndex:40, boxShadow:'0 6px 18px rgba(0,0,0,.2)' }}>
                     {repSearchResults.map(d => (
                       <div key={d.code} onMouseDown={()=>addRepDrug(r.id,d.code)}
                         style={{ padding:'7px 12px', cursor:'pointer', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', fontSize:12 }}
