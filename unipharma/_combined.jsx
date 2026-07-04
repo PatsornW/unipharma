@@ -4182,7 +4182,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   }, [onClose]);
 
   return (
-    <div style={{ maxWidth:740 }}>
+    <div style={{ maxWidth:740, margin:'0 auto' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div className="page-title" style={{ fontSize:16 }}>
           {isEdit ? L('แก้ไขผู้จัดจำหน่าย','Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย','Add Supplier')}
