@@ -349,7 +349,7 @@ function App() {
       {viewPO && (
         <PODocumentModal po={viewPO} lang={lang} L={L} suppliers={suppliers}
           onClose={() => setViewPO(null)}
-          onEdit={perm.canWrite ? () => { setEditPO(viewPO); setViewPO(null); setShowCreate(true); } : null} />
+          onEdit={perm.canWrite && viewPO.status !== 'completed' ? () => { setEditPO(viewPO); setViewPO(null); setShowCreate(true); } : null} />
       )}
 
       {/* NOTIFICATION TOAST */}

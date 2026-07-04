@@ -4182,7 +4182,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   }, [onClose]);
 
   return (
-    <div>
+    <div style={{ maxWidth:740 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div className="page-title" style={{ fontSize:16 }}>
           {isEdit ? L('แก้ไขผู้จัดจำหน่าย','Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย','Add Supplier')}
@@ -4192,7 +4192,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
           <button className="btn btn-primary" onClick={() => onSave(form)}>{L('บันทึก','Save')}</button>
         </div>
       </div>
-      <div className="card" style={{ maxWidth:740 }}>
+      <div className="card">
       <div className="form-row">
         {inp('name', L('ชื่อบริษัท (ไทย)', 'Thai Name'))}
         {inp('nameEN', L('ชื่อบริษัท (อังกฤษ)', 'English Name'))}
@@ -8520,7 +8520,7 @@ function App() {
       {viewPO && (
         <PODocumentModal po={viewPO} lang={lang} L={L} suppliers={suppliers}
           onClose={() => setViewPO(null)}
-          onEdit={perm.canWrite ? () => { setEditPO(viewPO); setViewPO(null); setShowCreate(true); } : null} />
+          onEdit={perm.canWrite && viewPO.status !== 'completed' ? () => { setEditPO(viewPO); setViewPO(null); setShowCreate(true); } : null} />
       )}
 
       {/* NOTIFICATION TOAST */}
