@@ -65,19 +65,14 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
       <div className="page-header">
         <div>
           <div className="page-title">{L('ผู้จัดจำหน่าย', 'Suppliers')}</div>
-          {!showForm && <div className="page-subtitle">{filtered.length} {L('ราย', 'suppliers')}</div>}
+          <div className="page-subtitle">{filtered.length} {L('ราย', 'suppliers')}</div>
         </div>
-        {!showForm && <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           {perm.canWrite && <button className="btn btn-ghost" onClick={exportSuppliers}>📥 {L('Export Excel', 'Export Excel')}</button>}
           {perm.canWrite && <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ {L('เพิ่มผู้จัดจำหน่าย', 'Add Supplier')}</button>}
-        </div>}
+        </div>
       </div>
 
-      {showForm ? (
-        <div style={{ maxWidth:740, width:'100%', alignSelf:'center', margin:'0 auto' }}>
-        <SupplierForm sup={editSup} lang={lang} L={L} drugs={drugs} onSave={saveSup} onClose={() => { setShowAdd(false); setEditSup(null); }} />
-        </div>
-      ) : (<>
       <div style={{ marginBottom: 16, maxWidth: 360 }}>
         <SearchInput value={search} onChange={setSearch} placeholder={L('ค้นหาผู้จัดจำหน่าย…', 'Search supplier…')} />
       </div>
@@ -151,7 +146,10 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
       </div>
 
       {viewSup && <SupplierDetail sup={viewSup} lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} orders={orders} onClose={() => setViewSup(null)} onEdit={() => { setEditSup(viewSup); setViewSup(null); }} />}
-      </>)}
+
+      {showForm && (
+        <SupplierForm sup={editSup} lang={lang} L={L} drugs={drugs} onSave={saveSup} onClose={() => { setShowAdd(false); setEditSup(null); }} />
+      )}
     </div>
   );
 }
@@ -480,17 +478,15 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
   }, [onClose]);
 
   return (
-    <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-        <div className="page-title" style={{ fontSize:16 }}>
-          {isEdit ? L('แก้ไขผู้จัดจำหน่าย','Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย','Add Supplier')}
+    <div className="modal-overlay">
+      <div className="modal" style={{ maxWidth:760, width:'95vw' }}>
+        <div className="modal-header">
+          <div className="modal-title">
+            {isEdit ? L('แก้ไขผู้จัดจำหน่าย','Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย','Add Supplier')}
+          </div>
+          <button className="btn-icon" onClick={onClose} style={{ border:'none', fontSize:18 }}>✕</button>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button className="btn btn-ghost" onClick={onClose}>{L('ยกเลิก','Cancel')}</button>
-          <button className="btn btn-primary" onClick={() => onSave(form)}>{L('บันทึก','Save')}</button>
-        </div>
-      </div>
-      <div className="card">
+        <div className="modal-body" style={{ overflowY:'auto', maxHeight:'76vh' }}>
       <div className="form-row">
         {inp('name', L('ชื่อบริษัท (ไทย)', 'Thai Name'))}
         {inp('nameEN', L('ชื่อบริษัท (อังกฤษ)', 'English Name'))}
@@ -824,7 +820,12 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], onSave, onClose }) {
           {L('ยังไม่มีรายการ — ค้นหาสินค้าด้านบนเพื่อเพิ่ม', 'No items yet — search above to add products')}
         </div>
       )}
-      </div>{/* end card */}
+        </div>{/* end modal-body */}
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>{L('ยกเลิก','Cancel')}</button>
+          <button className="btn btn-primary" onClick={() => onSave(form)}>{L('บันทึก','Save')}</button>
+        </div>
+      </div>{/* end modal */}
     </div>
   );
 }
