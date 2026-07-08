@@ -88,7 +88,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
         </div>
         <div className="modal-body" style={{ background: '#e0e0e0', padding: 24 }}>
           {/* A4 Document */}
-          <div id="po-doc-inner" className="po-doc" style={{ margin: '0 auto' }}>
+          <div id="po-doc-inner" className="po-doc" style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '297mm' }}>
 
             {/* HEADER */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 14, borderBottom: '2px solid #222', paddingBottom: 12 }}>
@@ -216,8 +216,11 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
               </div>
             </div>
 
+            {/* spacer pushes sig to bottom of A4 */}
+            <div style={{ flex: 1 }} />
+
             {/* SIGNATURES */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 8 }}>
               <div style={{ textAlign: 'center', minWidth: 220 }}>
                 <div style={{ fontStyle: 'italic', fontSize: '11pt', fontWeight: 700, marginBottom: 12, color: '#333' }}>{po.createdBy || '-'}</div>
                 <div style={{ borderTop: '1px solid #999', paddingTop: 6, fontSize: '9pt' }}>Created By</div>
@@ -225,8 +228,8 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
               </div>
             </div>
 
-            {/* PAGE */}
-            <div style={{ textAlign: 'right', fontSize: '8pt', color: '#888', marginTop: 20, borderTop: '1px solid #ddd', paddingTop: 6 }}>1 of 1</div>
+            {/* PAGE — screen only */}
+            <div style={{ textAlign: 'right', fontSize: '8pt', color: '#aaa', paddingTop: 6 }}>1 of 1</div>
           </div>
         </div>
       </div>
