@@ -2930,7 +2930,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (status = 'draft') => {
+  const handleSubmit = (status = 'draft') => {
     if (!validate()) { notify(L('กรุณากรอกข้อมูลให้ครบ', 'Please fill in all required fields'), 'err'); return; }
     const promo = supplier?.promotions?.find(p => p.id === selectedDeal);
     const mappedItems = items.map(it => ({ ...it, amount: calcLine(it) }));
@@ -2968,7 +2968,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
       const newPromo = { id: promoId, buyQty: nd.buyQty, freeQty: nd.freeQty, bonusItems: nd.bonusItems, discount: nd.discount, dealNote: nd.note };
       const updated = { ...supplier, promotions: [...(supplier.promotions || []), newPromo] };
       if (setSuppliers) setSuppliers(prev => prev.map(s => s.id === supplier.id ? updated : s));
-      try { if (window.UNI_DB?.saveSupplier) await window.UNI_DB.saveSupplier(updated); } catch (e) { console.warn('auto-save deal:', e); }
+      if (window.UNI_DB?.saveSupplier) window.UNI_DB.saveSupplier(updated).catch(e => console.warn('auto-save deal:', e));
     }
 
     if (editPO) {
