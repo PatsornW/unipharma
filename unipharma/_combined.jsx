@@ -3707,7 +3707,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
                     { h: 'Amount',     align: 'right',  w: 80 },
                     { h: 'Remarks',    align: 'left',   w: 100 },
                   ].map(({ h, align, w }) => (
-                    <th key={h} style={{ background: '#d5d5d5', padding: '6px 8px', border: '1px solid #999', fontSize: '9pt', fontWeight: 700, textAlign: align, position: 'sticky', top: 0, zIndex: 1, ...(w ? { width: w } : {}) }}>{h}</th>
+                    <th key={h} style={{ background: '#d5d5d5', padding: '6px 8px', border: '1px solid #999', fontSize: '9pt', fontWeight: 700, textAlign: align, ...(w ? { width: w } : {}) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
