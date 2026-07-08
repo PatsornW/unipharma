@@ -22,6 +22,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
     nameEN: 'MAGNIFICENT MYANMAR CO., LTD. (Head Office)',
     taxId: '0105565115671',
     address: '491/4 ถนนราชปรารภ แขวงมักกะสัน เขตราชเทวี กรุงเทพมหานคร 10400',
+    addressEN: '491/4 Ratchaprarop Road, Makkasan Subdistrict, Ratchathewi District, Bangkok 10400',
     tel: '+66 80 005 5690, +66 92 938 1490, +66 80 182 7287'
   };
 
@@ -31,45 +32,43 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
       <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Noto Sans Thai','Times New Roman',serif;font-size:10pt;color:#111;background:#fff}
-        .doc{width:210mm;margin:0 auto;padding:14mm}
+        .doc{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 14mm 12mm 14mm;position:relative}
         .header{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;border-bottom:2px solid #333;padding-bottom:12px}
         .logo{width:80px;flex-shrink:0}
         .logo img{width:100%;object-fit:contain}
         .company-info{flex:1}
         .company-name-th{font-size:13pt;font-weight:700;color:#1a1a1a}
         .company-name-en{font-size:11pt;font-weight:700;margin-bottom:4px}
-        .company-detail{font-size:8.5pt;color:#444;line-height:1.6}
-        .po-title{text-align:center;margin:16px 0;background:#e8e8e8;padding:10px;border-radius:4px}
-        .po-title h1{font-size:16pt;font-weight:700;letter-spacing:1px}
-        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:12px;border:1px solid #ccc}
-        .info-col{padding:10px 12px;border-right:1px solid #ccc}
+        .company-detail{font-size:8.5pt;color:#444;line-height:1.65}
+        .po-title{text-align:center;margin:12px 0;background:#e8e8e8;padding:9px;border-radius:2px}
+        .po-title h1{font-size:15pt;font-weight:800;letter-spacing:2px}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:10px;border:1px solid #ccc}
+        .info-col{padding:9px 11px;border-right:1px solid #ccc}
         .info-col:last-child{border-right:none}
-        .info-row{margin-bottom:5px;font-size:9.5pt;line-height:1.4}
-        .info-label{font-weight:700;color:#333;margin-right:4px}
-        .currency-row{text-align:right;font-size:9pt;font-weight:700;margin-bottom:8px;color:#333}
+        .info-row{margin-bottom:4px;font-size:9pt;line-height:1.4}
+        .currency-row{text-align:right;font-size:9pt;font-weight:700;margin-bottom:7px;color:#333}
         table{width:100%;border-collapse:collapse;margin-bottom:12px}
         th{background:#d0d0d0;font-weight:700;padding:6px 8px;text-align:left;border:1px solid #999;font-size:9pt}
         td{padding:6px 8px;border:1px solid #ccc;font-size:9pt;vertical-align:top}
-        .num{text-align:right}
-        .summary-row{display:flex;justify-content:space-between;padding:3px 0;font-size:9.5pt}
-        .summary-section{width:280px;margin-left:auto;margin-bottom:12px;border-top:1px solid #999;padding-top:8px}
-        .grand-total{font-weight:700;font-size:11pt;border-top:2px solid #333;padding-top:4px;margin-top:4px}
-        .thai-words{font-style:italic;font-size:9pt;color:#444;margin-bottom:16px}
-        .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
-        .sig-box{text-align:center;border-top:1px dashed #999;padding-top:8px;font-size:9pt}
-        .sig-name{font-style:italic;font-size:10pt;font-weight:700;margin-bottom:4px}
-        .memo-section{font-size:9pt;color:#444;margin-bottom:12px}
+        .item-deal{font-size:7.5pt;color:#1a5c1a;margin-top:3px;background:#f0faf0;padding:2px 6px;border-radius:2px;border-left:2px solid #6dba6d;display:inline-block;line-height:1.5}
+        .summary-section{width:270px;margin-left:auto}
+        .sum-row{display:flex;justify-content:space-between;padding:3px 0;font-size:9.5pt;border-bottom:1px solid #eee}
+        .grand-total{font-weight:800;font-size:11pt;border-top:2px solid #333;padding-top:5px;margin-top:4px;display:flex;justify-content:space-between}
+        .sig-area{position:absolute;bottom:10mm;left:14mm;right:14mm;display:flex;justify-content:center}
+        .sig-box{text-align:center;min-width:220px}
+        .sig-name{font-style:italic;font-size:10pt;font-weight:700;margin-bottom:12px}
+        .sig-line{border-top:1px dashed #999;padding-top:6px;font-size:9pt}
+        .page-num{position:absolute;bottom:10mm;right:14mm;font-size:8pt;color:#888}
         @page{size:A4;margin:0}
       </style>
     `;
     const html = printWin.document;
-    html.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO - ${po.poNumber}</title>${style}<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet"></head><body><div class="doc">${document.getElementById('po-doc-inner').innerHTML}</div></body></html>`);
+    html.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO - ${po.poNumber}</title>${style}<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet"></head><body><div class="doc">${document.getElementById('po-doc-inner').innerHTML}<div class="page-num">1 of 1</div></div></body></html>`);
     html.close();
     setTimeout(() => { printWin.focus(); printWin.print(); }, 800);
   };
 
   const rows = po.items || [];
-  const hasVatItems = rows.some(r => r.vatRate > 0);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -90,6 +89,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
         <div className="modal-body" style={{ background: '#e0e0e0', padding: 24 }}>
           {/* A4 Document */}
           <div id="po-doc-inner" className="po-doc" style={{ margin: '0 auto' }}>
+
             {/* HEADER */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 14, borderBottom: '2px solid #222', paddingBottom: 12 }}>
               <img src="assets/logo.png" alt="Unipharma" style={{ width: 80, objectFit: 'contain', flexShrink: 0 }} />
@@ -99,6 +99,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
                 <div style={{ fontSize: '8.5pt', color: '#444', lineHeight: 1.7 }}>
                   <div><b>Tax ID:</b> {COMPANY.taxId}</div>
                   <div>{COMPANY.address}</div>
+                  <div>{COMPANY.addressEN}</div>
                   <div><b>Contact:</b> {COMPANY.tel}</div>
                 </div>
               </div>
@@ -112,16 +113,15 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
 
             {/* SUPPLIER + PO INFO */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid #ccc', marginBottom: 12 }}>
+              {/* LEFT — Supplier */}
               <div style={{ padding: '10px 12px', borderRight: '1px solid #ccc' }}>
                 {[
                   ['Name', lang==='th'?(supplier.name||'-'):(supplier.nameEN||supplier.name||'-')],
-                  po.repBrand ? ['Division / Brand', lang==='en'?(po.repBrandEN||po.repBrand):po.repBrand] : null,
                   ['Address', supplier.address || '-'],
-                  ['Branch No.', branch.code ? `${branch.id} (${branch.code})` : '-'],
                   ['Tax ID', supplier.taxId || '-'],
+                  ['Contact Accounting / Tel.', [supplier.contact, supplier.phone].filter(Boolean).join(' · ') || '-'],
+                  po.repBrand ? ['Division / Brand', lang==='en'?(po.repBrandEN||po.repBrand):po.repBrand] : null,
                   po.repName ? ['Sales Rep', `${po.repName}${po.repPhone?' · '+po.repPhone:''}`] : null,
-                  !po.repName ? ['Contact', supplier.contact || '-'] : null,
-                  !po.repName ? ['Tel', supplier.phone || '-'] : null,
                   ['Credit Term', `${po.creditTerm || 30} Days`],
                 ].filter(Boolean).map(([lbl, val]) => (
                   <div key={lbl} style={{ marginBottom: 4, fontSize: '9.5pt', lineHeight: 1.4 }}>
@@ -129,6 +129,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
                   </div>
                 ))}
               </div>
+              {/* RIGHT — PO Info */}
               <div style={{ padding: '10px 12px' }}>
                 {[
                   ['Purchase Order No.', po.poNumber],
@@ -136,8 +137,8 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
                   ['Purchase Order Date', UTILS.fmtDate(po.poDate, 'en')],
                   ['Delivery Date', UTILS.fmtDate(po.deliveryDate, 'en')],
                   ['Deliver To', po.location || deliveryBranch.addressEN || deliveryBranch.nameEN || '-'],
+                  ['Branch No.', branch.code ? `${branch.id} (${branch.code})` : (branch.id || '-')],
                   ['Branch Tel', deliveryBranch.phone || '-'],
-                  ['Deal / Note', po.dealNote || '-'],
                 ].map(([lbl, val]) => (
                   <div key={lbl} style={{ marginBottom: 4, fontSize: '9.5pt', lineHeight: 1.4 }}>
                     <b>{lbl}:</b> <span style={{ color: '#333' }}>{val}</span>
@@ -153,8 +154,16 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
             <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 12 }}>
               <thead>
                 <tr>
-                  {['No.', 'Description', 'Quantity', 'Unit', 'Unit Price', 'Amount', 'VAT'].map(h => (
-                    <th key={h} style={{ background: '#d5d5d5', padding: '6px 8px', border: '1px solid #999', fontSize: '9pt', fontWeight: 700, textAlign: h === 'No.' || h === 'VAT' ? 'center' : h === 'Quantity' || h === 'Unit Price' || h === 'Amount' ? 'right' : 'left' }}>{h}</th>
+                  {[
+                    { h: 'No.',        align: 'center', w: 28 },
+                    { h: 'Description',align: 'left' },
+                    { h: 'Quantity',   align: 'right',  w: 62 },
+                    { h: 'Unit',       align: 'left',   w: 46 },
+                    { h: 'Unit Price', align: 'right',  w: 74 },
+                    { h: 'Amount',     align: 'right',  w: 80 },
+                    { h: 'Remarks',    align: 'left',   w: 100 },
+                  ].map(({ h, align, w }) => (
+                    <th key={h} style={{ background: '#d5d5d5', padding: '6px 8px', border: '1px solid #999', fontSize: '9pt', fontWeight: 700, textAlign: align, position: 'sticky', top: 0, zIndex: 1, ...(w ? { width: w } : {}) }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -164,15 +173,16 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
                     <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center', fontSize: '9pt' }}>{i + 1}</td>
                     <td style={{ border: '1px solid #ccc', padding: '6px 8px', fontSize: '9pt' }}>
                       <div style={{ fontWeight: 600 }}>{it.code} — {lang === 'th' ? it.nameTH : (it.nameEN || it.nameTH)}</div>
+                      {it.discount > 0 && <div style={{ fontSize: '8pt', color: '#888', marginTop: 1 }}>Disc. {it.discount}%</div>}
+                      {it.dealNote && (
+                        <div style={{ fontSize: '7.5pt', color: '#1a5c1a', marginTop: 3, background: '#f0faf0', padding: '2px 6px', borderRadius: 2, borderLeft: '2px solid #6dba6d', display: 'inline-block', lineHeight: 1.5 }}>{it.dealNote}</div>
+                      )}
                     </td>
                     <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontSize: '9pt' }}>{it.qty?.toLocaleString()}</td>
                     <td style={{ border: '1px solid #ccc', padding: '6px 8px', fontSize: '9pt' }}>{UTILS.getUnit(it.unit, lang)}</td>
-                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontSize: '9pt' }}>
-                      {UTILS.fmt(it.unitPrice)}
-                      {it.discount > 0 && <div style={{ fontSize: '8pt', color: '#888' }}>{lang==='th'?'ส่วนลด':'Disc.'} {it.discount}%</div>}
-                    </td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontSize: '9pt' }}>{UTILS.fmt(it.unitPrice)}</td>
                     <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontSize: '9pt', fontWeight: 600 }}>{UTILS.fmt(it.amount || (it.unitPrice * it.qty * (1 - (it.discount || 0) / 100)))}</td>
-                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'center', fontSize: '9pt' }}>{it.vatRate > 0 ? it.vatRate : '-'}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '6px 8px', fontSize: '8.5pt', color: '#444' }}>{it.remark || ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -183,19 +193,6 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
               <div>
                 <div style={{ fontSize: '9.5pt', fontWeight: 700, marginBottom: 4 }}>Memo:</div>
                 <div style={{ fontSize: '9pt', color: '#444', lineHeight: 1.6 }}>{po.memo || '-'}</div>
-                {po.poDeal && (po.poDeal.buyQty || po.poDeal.discount || po.poDeal.bonusItems || po.poDeal.note) && (() => {
-                  const d = po.poDeal;
-                  const parts = [];
-                  if (d.buyQty > 0) parts.push(`ซื้อ ${d.buyQty} แถม ${d.freeQty || 0}`);
-                  if (d.discount > 0) parts.push(`ส่วนลดพิเศษ ${d.discount}%`);
-                  if (d.bonusItems) parts.push(`ขอแถม: ${d.bonusItems}`);
-                  if (d.note) parts.push(d.note);
-                  return (
-                    <div style={{ marginTop: 8, padding: '5px 10px', background: '#eef6ec', border: '1px solid #b6d9b0', borderRadius: 3, fontSize: '9pt', lineHeight: 1.6 }}>
-                      <b>🎁 Deal Terms:</b> {parts.join(' · ')}
-                    </div>
-                  );
-                })()}
               </div>
               <div style={{ minWidth: 260 }}>
                 {[

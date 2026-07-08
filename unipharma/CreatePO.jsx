@@ -160,7 +160,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
   const updateItem = (code, field, val) => {
     setItems(prev => prev.map(i => {
       if (i.code !== code) return i;
-      if (field === 'unitMode' || field === 'unit') return { ...i, [field]: val };
+      if (field === 'unitMode' || field === 'unit' || field === 'dealNote' || field === 'remark') return { ...i, [field]: val };
       if (field === 'vatRate') return { ...i, [field]: parseInt(val) };
       return { ...i, [field]: val === '' ? 0 : parseFloat(val) };
     }));
@@ -691,6 +691,20 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                             </div>
                           );
                         })()}
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ fontSize: 10, color: 'var(--txt3)', marginBottom: 2 }}>Deal Note:</div>
+                          <input className="input input-sm" type="text" value={it.dealNote || ''}
+                            onChange={e => updateItem(it.code, 'dealNote', e.target.value)}
+                            placeholder={L('โน้ตดีลสินค้านี้…', 'Deal note for this item…')}
+                            style={{ width: '100%', fontSize: 11 }} />
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ fontSize: 10, color: 'var(--txt3)', marginBottom: 2 }}>{L('หมายเหตุ', 'Remark')}:</div>
+                          <input className="input input-sm" type="text" value={it.remark || ''}
+                            onChange={e => updateItem(it.code, 'remark', e.target.value)}
+                            placeholder={L('หมายเหตุสินค้านี้…', 'Remark for this item…')}
+                            style={{ width: '100%', fontSize: 11 }} />
+                        </div>
                       </td>
                       <td style={{ minWidth: 140 }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
