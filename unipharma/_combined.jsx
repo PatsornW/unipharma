@@ -3327,7 +3327,8 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                 </thead>
                 <tbody>
                   {items.map((it, i) => (
-                    <tr key={it.code}>
+                    <React.Fragment key={it.code}>
+                    <tr>
                       <td style={{ color: 'var(--txt3)', fontSize: 12 }}>{i + 1}</td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{lang === 'th' ? it.nameTH : (it.nameEN||it.nameTH)}</div>
@@ -3376,48 +3377,6 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                             </div>
                           );
                         })()}
-                        <div style={{ marginTop: 7, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ok)', marginBottom: 5 }}>🎁 Deal:</div>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 4 }}>
-                            <div>
-                              <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('ซื้อ','Buy')}</div>
-                              <input className="input input-sm" type="number" min="0" value={it.dealBuyQty || ''}
-                                onChange={e => updateItem(it.code, 'dealBuyQty', e.target.value)}
-                                placeholder="0" style={{ width: 44, fontSize: 11, textAlign: 'center' }} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('แถม','Free')}</div>
-                              <input className="input input-sm" type="number" min="0" value={it.dealFreeQty || ''}
-                                onChange={e => updateItem(it.code, 'dealFreeQty', e.target.value)}
-                                placeholder="0" style={{ width: 44, fontSize: 11, textAlign: 'center' }} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 80 }}>
-                              <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('ขอแถม','Bonus')}</div>
-                              <input className="input input-sm" type="text" value={it.dealBonusItems || ''}
-                                onChange={e => updateItem(it.code, 'dealBonusItems', e.target.value)}
-                                placeholder={L('เช่น ปฏิทิน…','e.g. calendar…')} style={{ width: '100%', fontSize: 11 }} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>Disc%</div>
-                              <input className="input input-sm" type="number" min="0" max="100" value={it.dealDiscount || ''}
-                                onChange={e => updateItem(it.code, 'dealDiscount', e.target.value)}
-                                placeholder="0" style={{ width: 50, fontSize: 11, textAlign: 'center' }} />
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>Note:</div>
-                            <input className="input input-sm" type="text" value={it.dealNoteText || ''}
-                              onChange={e => updateItem(it.code, 'dealNoteText', e.target.value)}
-                              placeholder={L('โน้ตเพิ่มเติม…','Additional note…')} style={{ width: '100%', fontSize: 11 }} />
-                          </div>
-                        </div>
-                        <div style={{ marginTop: 4 }}>
-                          <div style={{ fontSize: 10, color: 'var(--txt3)', marginBottom: 2 }}>{L('หมายเหตุ', 'Remark')}:</div>
-                          <input className="input input-sm" type="text" value={it.remark || ''}
-                            onChange={e => updateItem(it.code, 'remark', e.target.value)}
-                            placeholder={L('หมายเหตุสินค้านี้…', 'Remark for this item…')}
-                            style={{ width: '100%', fontSize: 11 }} />
-                        </div>
                       </td>
                       <td style={{ minWidth: 140 }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
@@ -3480,6 +3439,50 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         <button className="btn-icon" onClick={() => removeItem(it.code)} style={{ color: 'var(--err)' }}>✕</button>
                       </td>
                     </tr>
+                    <tr>
+                      <td colSpan={9} style={{ padding: '0 8px 8px', background: 'var(--bg2)', borderTop: 'none' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ok)', whiteSpace: 'nowrap', paddingBottom: 4 }}>🎁 Deal:</span>
+                          <div>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('ซื้อ','Buy')}</div>
+                            <input className="input input-sm" type="number" min="0" value={it.dealBuyQty || ''}
+                              onChange={e => updateItem(it.code, 'dealBuyQty', e.target.value)}
+                              placeholder="0" style={{ width: 50, fontSize: 11, textAlign: 'center' }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('แถม','Free')}</div>
+                            <input className="input input-sm" type="number" min="0" value={it.dealFreeQty || ''}
+                              onChange={e => updateItem(it.code, 'dealFreeQty', e.target.value)}
+                              placeholder="0" style={{ width: 50, fontSize: 11, textAlign: 'center' }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 100 }}>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('ขอแถม','Bonus')}</div>
+                            <input className="input input-sm" type="text" value={it.dealBonusItems || ''}
+                              onChange={e => updateItem(it.code, 'dealBonusItems', e.target.value)}
+                              placeholder={L('เช่น ปฏิทิน…','e.g. calendar…')} style={{ width: '100%', fontSize: 11 }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>Disc%</div>
+                            <input className="input input-sm" type="number" min="0" max="100" value={it.dealDiscount || ''}
+                              onChange={e => updateItem(it.code, 'dealDiscount', e.target.value)}
+                              placeholder="0" style={{ width: 60, fontSize: 11, textAlign: 'center' }} />
+                          </div>
+                          <div style={{ flex: 2, minWidth: 120 }}>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>Note:</div>
+                            <input className="input input-sm" type="text" value={it.dealNoteText || ''}
+                              onChange={e => updateItem(it.code, 'dealNoteText', e.target.value)}
+                              placeholder={L('โน้ตเพิ่มเติม…','Additional note…')} style={{ width: '100%', fontSize: 11 }} />
+                          </div>
+                          <div style={{ flex: 2, minWidth: 120 }}>
+                            <div style={{ fontSize: 9, color: 'var(--txt3)', marginBottom: 1 }}>{L('หมายเหตุ','Remark')}:</div>
+                            <input className="input input-sm" type="text" value={it.remark || ''}
+                              onChange={e => updateItem(it.code, 'remark', e.target.value)}
+                              placeholder={L('หมายเหตุสินค้านี้…','Remark for this item…')} style={{ width: '100%', fontSize: 11 }} />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
