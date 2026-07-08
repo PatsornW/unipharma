@@ -32,7 +32,7 @@ function PODocumentModal({ po, lang, L, suppliers, onClose, onEdit }) {
       <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Noto Sans Thai','Times New Roman',serif;font-size:10pt;color:#111;background:#fff}
-        .doc{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 14mm 12mm 14mm;position:relative}
+        .doc{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 14mm 12mm 14mm;position:relative;display:flex;flex-direction:column}
         .header{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px;border-bottom:2px solid #333;padding-bottom:12px}
         .logo{width:80px;flex-shrink:0}
         .logo img{width:100%;object-fit:contain}
