@@ -5824,7 +5824,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
 function ReportsPage({ lang, L, drugs, orders, suppliers }) {
   const [activeTab, setActiveTab] = useState('movement');
   const [branchFilter, setBranchFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState('2026-06');
+  const [monthFilter, setMonthFilter] = React.useState(() => new Date().toISOString().slice(0, 7));
 
   const months = useMemo(() => {
     const s = new Set(orders.map(o => o.poDate?.slice(0, 7)).filter(Boolean));
@@ -5867,9 +5867,19 @@ function ReportsPage({ lang, L, drugs, orders, suppliers }) {
     }));
   }, [orders, monthFilter]);
 
-  // Chart data
-  const monthLabels = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.'];
-  const monthKeys = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
+  // Chart data — dynamic: last 6 months from today
+  const { monthLabels, monthKeys } = useMemo(() => {
+    const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const now = new Date();
+    const keys = [], labels = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      keys.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+      labels.push(lang === 'th' ? TH_MONTHS[d.getMonth()] : EN_MONTHS[d.getMonth()]);
+    }
+    return { monthKeys: keys, monthLabels: labels };
+  }, [lang]);
   const totalByMonth = monthKeys.map(k => orders.filter(o => o.poDate?.startsWith(k) && o.status !== 'cancelled' && o.status !== 'draft').reduce((s, o) => s + (o.grandTotal || 0), 0));
 
   const trendChart = {
