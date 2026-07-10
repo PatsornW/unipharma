@@ -156,6 +156,7 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
 
 function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit }) {
   const [dealEdit, setDealEdit] = useState(null);
+  const [selectedRepId, setSelectedRepId] = useState(null);
   const supDrugs = drugs.filter(d => sup.drugs?.includes(d.code));
   const supOrders = orders.filter(o => o.supplierId === sup.id).sort((a, b) => new Date(b.poDate) - new Date(a.poDate));
 
@@ -224,14 +225,83 @@ function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit
         <div style={{ marginBottom:16 }}>
           <div style={{ fontWeight:700, fontSize:12, color:'var(--txt3)', marginBottom:8 }}>👥 {L('ผู้แทน / Brand','Sales Reps')}</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {sup.reps.map(r => (
-              <div key={r.id} style={{ background:'var(--card2)', border:'1px solid var(--bdr)', borderRadius:8, padding:'8px 12px', minWidth:140 }}>
-                <div style={{ fontWeight:700, fontSize:12, color:'var(--acc2)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
-                <div style={{ fontSize:13, color:'var(--txt)', marginTop:2 }}>{r.name}</div>
-                {r.phone && <div style={{ fontSize:11, color:'var(--txt3)', marginTop:2 }}>📞 {r.phone}</div>}
-              </div>
-            ))}
+            {sup.reps.map(r => {
+              const isActive = selectedRepId === r.id;
+              const drugCount = (r.drugs||[]).length;
+              return (
+                <div key={r.id}
+                  onClick={() => setSelectedRepId(isActive ? null : r.id)}
+                  style={{ background: isActive ? 'var(--acc-bg)' : 'var(--card2)',
+                           border: `1px solid ${isActive ? 'var(--acc2)' : 'var(--bdr)'}`,
+                           borderRadius:8, padding:'8px 12px', minWidth:140,
+                           cursor:'pointer', transition:'border-color .15s, background .15s' }}>
+                  <div style={{ fontWeight:700, fontSize:12, color:'var(--acc2)' }}>{lang==='en'?(r.brandEN||r.brand):r.brand}</div>
+                  <div style={{ fontSize:13, color:'var(--txt)', marginTop:2 }}>{r.name}</div>
+                  {r.phone && <div style={{ fontSize:11, color:'var(--txt3)', marginTop:2 }}>📞 {r.phone}</div>}
+                  {drugCount > 0 && <div style={{ marginTop:5, display:'inline-block', fontSize:10, background:'var(--card3,var(--bg2))', color:'var(--txt4)', borderRadius:99, padding:'1px 7px' }}>{drugCount} {L('สินค้า','items')}</div>}
+                </div>
+              );
+            })}
           </div>
+          {selectedRepId && (() => {
+            const rep = (sup.reps||[]).find(r => r.id === selectedRepId);
+            if (!rep) return null;
+            const repDrugs = (rep.drugs||[]).map(d => {
+              const info = drugs.find(x => x.code === d.code);
+              return { ...d, nameTH: info?.nameTH || d.code, nameEN: info?.nameEN || '' };
+            });
+            const init = (rep.name||'R').replace(/คุณ/,'').trim()[0] || 'R';
+            return (
+              <div style={{ marginTop:8, background:'var(--bg1)', border:'1px solid var(--acc2)', borderRadius:10, padding:'12px 14px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10, paddingBottom:8, borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ width:34, height:34, borderRadius:'50%', background:'var(--acc-bg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'var(--acc2)', flexShrink:0 }}>{init}</div>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--acc2)' }}>{lang==='en'?(rep.brandEN||rep.brand):rep.brand}</div>
+                    <div style={{ fontSize:12, color:'var(--txt2)' }}>{rep.name}</div>
+                    {rep.phone && <div style={{ fontSize:11, color:'var(--txt4)' }}>📞 {rep.phone}</div>}
+                  </div>
+                </div>
+                {repDrugs.length === 0 ? (
+                  <div style={{ fontSize:12, color:'var(--txt4)', textAlign:'center', padding:'12px 0' }}>{L('ยังไม่มีสินค้าที่กำหนด','No products assigned')}</div>
+                ) : (
+                  <div className="tbl-wrap">
+                    <table>
+                      <thead><tr>
+                        <th>{L('รหัส','Code')}</th>
+                        <th>{L('สินค้า','Product')}</th>
+                        <th>{L('ซื้อ/แถม','Buy/Free')}</th>
+                        <th className="tbl-num">Disc%</th>
+                        <th>Note</th>
+                        <th>{L('นโยบายคืน','Return')}</th>
+                      </tr></thead>
+                      <tbody>
+                        {repDrugs.map(d => {
+                          const hasBF = d.buyQty > 0 && d.freeQty > 0;
+                          const ret = lang==='en' ? (d.returnPolicyEN||d.returnPolicy) : (d.returnPolicy||d.returnPolicyEN);
+                          return (
+                            <tr key={d.code}>
+                              <td style={{ fontFamily:'monospace', fontSize:11, color:'var(--acc2)', whiteSpace:'nowrap' }}>{d.code}</td>
+                              <td style={{ fontSize:12 }}>{lang==='th' ? d.nameTH : (d.nameEN||d.nameTH)}</td>
+                              <td style={{ fontSize:11 }}>
+                                {hasBF ? <span style={{ background:'var(--ok-bg)', color:'var(--ok)', borderRadius:4, padding:'1px 6px', fontSize:10 }}>{d.buyQty}+{d.freeQty}</span>
+                                        : <span style={{ color:'var(--txt4)' }}>-</span>}
+                              </td>
+                              <td className="tbl-num" style={{ fontSize:11 }}>
+                                {d.discount > 0 ? <span style={{ background:'var(--warn-bg)', color:'var(--warn)', borderRadius:4, padding:'1px 6px', fontSize:10 }}>{d.discount}%</span>
+                                               : <span style={{ color:'var(--txt4)' }}>-</span>}
+                              </td>
+                              <td style={{ fontSize:11, color:'var(--txt3)', fontStyle: d.note ? 'italic' : 'normal' }}>{d.note || '-'}</td>
+                              <td style={{ fontSize:11, color:'var(--txt4)' }}>{ret || '-'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
