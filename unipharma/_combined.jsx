@@ -4104,7 +4104,7 @@ function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit
           </div>
         );
       })()}
-      {dealEdit !== null && <DealEditorModal lang={lang} L={L} drugs={drugs} supId={sup.id} initialDrugCode={dealEdit.drugCode} initialDeal={dealEdit.deal} onSave={saveDeal} onClose={() => setDealEdit(null)} />}
+      {dealEdit !== null && <DealEditorModal lang={lang} L={L} drugs={drugs} supId={sup.id} supDrugs={sup.drugs||[]} initialDrugCode={dealEdit.drugCode} initialDeal={dealEdit.deal} onSave={saveDeal} onClose={() => setDealEdit(null)} />}
       <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--txt3)', marginBottom: 8 }}>📦 {L('รายการสินค้า', 'Products')} ({supDrugs.length})</div>
       <div className="tbl-wrap" style={{ maxHeight: 200, marginBottom: 16 }}>
         <table>
@@ -4141,17 +4141,25 @@ function SupplierDetail({ sup, lang, L, drugs, setDrugs, orders, onClose, onEdit
   );
 }
 
-function DealEditorModal({ lang, L, drugs, supId, initialDrugCode, initialDeal, onSave, onClose }) {
+function DealEditorModal({ lang, L, drugs, supId, supDrugs=[], initialDrugCode, initialDeal, onSave, onClose }) {
   const [drugCode, setDrugCode] = React.useState(initialDrugCode || '');
   const [query, setQuery] = React.useState('');
   const [showList, setShowList] = React.useState(!initialDrugCode);
   const [form, setForm] = React.useState(initialDeal || { buyQty:'', freeQty:'', freeItems:'', specialDiscount:'', note:'' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const filteredDrugs = React.useMemo(() => {
-    if (!query) return [];
+    if (!query) {
+      if (supDrugs.length > 0) {
+        const owned = supDrugs.map(c => drugs.find(d => d.code === c)).filter(Boolean);
+        if (owned.length >= 30) return owned.slice(0, 30);
+        const extra = drugs.filter(d => !supDrugs.includes(d.code)).slice(0, 30 - owned.length);
+        return [...owned, ...extra];
+      }
+      return drugs.slice(0, 30);
+    }
     const q = query.toLowerCase();
-    return drugs.filter(d => d.code.toLowerCase().includes(q)||d.nameTH.toLowerCase().includes(q)||(d.nameEN||'').toLowerCase().includes(q)).slice(0,20);
-  }, [drugs, query]);
+    return drugs.filter(d => d.code.toLowerCase().includes(q)||d.nameTH.toLowerCase().includes(q)||(d.nameEN||'').toLowerCase().includes(q)).slice(0, 20);
+  }, [drugs, supDrugs, query]);
   const selectedDrug = drugs.find(d => d.code === drugCode);
   const handleSave = () => {
     if (!drugCode) return;
@@ -4171,21 +4179,34 @@ function DealEditorModal({ lang, L, drugs, supId, initialDrugCode, initialDeal, 
         {selectedDrug && !showList ? (
           <div style={{ display:'flex', gap:8, alignItems:'center', background:'var(--card2)', borderRadius:8, padding:'8px 12px' }}>
             <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, fontSize:12 }}>{selectedDrug.nameTH}</div>
-              <div style={{ fontSize:11, color:'var(--txt3)' }}>{selectedDrug.nameEN} · {selectedDrug.code}</div>
+              <div style={{ fontWeight:600, fontSize:13 }}>{selectedDrug.nameTH}</div>
+              <div style={{ fontSize:11, color:'var(--txt3)', marginTop:2 }}>{selectedDrug.nameEN && <span>{selectedDrug.nameEN} · </span>}<span style={{ fontFamily:'monospace' }}>{selectedDrug.code}</span></div>
             </div>
             {!initialDrugCode && <button className="btn btn-ghost btn-xs" onClick={()=>{setDrugCode('');setQuery('');setShowList(true);}}>{L('เปลี่ยน','Change')}</button>}
           </div>
         ) : (
           <div style={{ position:'relative' }}>
-            <input className="input" placeholder={L('พิมพ์รหัสหรือชื่อยา…','Type drug code or name…')}
-              value={query} onChange={e=>{setQuery(e.target.value);setShowList(true);}} autoFocus />
+            <input className="input" placeholder={L('🔍 พิมพ์รหัสหรือชื่อยา…','🔍 Type drug code or name…')}
+              value={query} onChange={e=>{setQuery(e.target.value);setShowList(true);}}
+              onFocus={()=>setShowList(true)} autoFocus />
             {filteredDrugs.length > 0 && showList && (
-              <div style={{ position:'absolute', zIndex:200, left:0, right:0, top:'100%', marginTop:2, background:'var(--card)', border:'1px solid var(--bdr)', borderRadius:8, boxShadow:'0 4px 20px rgba(0,0,0,.15)', maxHeight:180, overflowY:'auto' }}>
+              <div style={{ position:'absolute', zIndex:200, left:0, right:0, top:'100%', marginTop:2, background:'var(--card)', border:'1px solid var(--bdr)', borderRadius:8, boxShadow:'0 6px 24px rgba(0,0,0,.18)', maxHeight:220, overflowY:'auto' }}>
+                {!query && (
+                  <div style={{ padding:'5px 12px', fontSize:10, color:'var(--txt4)', background:'var(--bg3)', borderBottom:'1px solid var(--bdr)', borderRadius:'8px 8px 0 0' }}>
+                    {supDrugs.length > 0 ? L('สินค้าของ Supplier นี้ก่อน','Supplier\'s products first') : L('สินค้าทั้งหมด','All products')}
+                  </div>
+                )}
                 {filteredDrugs.map(d => (
-                  <div key={d.code} style={{ padding:'8px 12px', cursor:'pointer', borderBottom:'1px solid var(--bdr)', fontSize:12 }}
-                    onMouseDown={()=>{setDrugCode(d.code);setShowList(false);}}>
-                    <span style={{ fontFamily:'monospace', color:'var(--acc2)', fontSize:11, marginRight:6 }}>{d.code}</span>{d.nameTH}
+                  <div key={d.code}
+                    style={{ padding:'7px 12px', cursor:'pointer', borderBottom:'1px solid var(--bdr)' }}
+                    onMouseDown={()=>{setDrugCode(d.code);setShowList(false);setQuery('');}}
+                    onMouseOver={e=>e.currentTarget.style.background='var(--bg3)'}
+                    onMouseOut={e=>e.currentTarget.style.background=''}>
+                    <div style={{ fontSize:12 }}>
+                      <span style={{ fontFamily:'monospace', color:'var(--acc2)', fontSize:11, marginRight:6 }}>{d.code}</span>
+                      {d.nameTH}
+                    </div>
+                    {d.nameEN && <div style={{ fontSize:11, color:'var(--txt4)', marginTop:1 }}>{d.nameEN}</div>}
                   </div>
                 ))}
               </div>
