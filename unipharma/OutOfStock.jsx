@@ -93,7 +93,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
         if (all) { setAllHistory(all); setHistoryLoaded(true); return; }
       }
       const data = JSON.parse(localStorage.getItem('uni_out_of_stock') || '[]');
-      setAllHistory([...data].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setAllHistory([...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
     } catch (e) {}
     setHistoryLoaded(true);
   };
@@ -206,7 +206,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
       if (!map[key]) map[key] = [];
       map[key].push(r);
     });
-    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allHistory]);
 
   const activeReports = reports.filter(r => r.status !== 'arrived');

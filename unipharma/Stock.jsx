@@ -16,8 +16,7 @@ function StockPage({ lang, L, drugs, orders, setPage, setShowCreate }) {
     if (statusFilter === 'low') list = list.filter(d => Object.entries(d.stock).some(([br, v]) => (!branchFilter || br === branchFilter) && v <= d.minStock));
     else if (statusFilter === 'warning') list = list.filter(d => Object.entries(d.stock).some(([br, v]) => (!branchFilter || br === branchFilter) && v > d.minStock && v <= d.minStock * 2));
     else if (statusFilter === 'ok') list = list.filter(d => Object.entries(d.stock).every(([br, v]) => !branchFilter || br !== branchFilter || v > d.minStock * 2));
-    if (branchFilter) list.sort((a, b) => a.stock[branchFilter] - b.stock[branchFilter]);
-    else list.sort((a, b) => (a.totalStock / a.minStock) - (b.totalStock / b.minStock));
+    list.sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
     return list;
   }, [drugs, search, catFilter, statusFilter, branchFilter]);
 

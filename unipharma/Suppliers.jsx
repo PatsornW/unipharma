@@ -9,10 +9,17 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
   const [confirmSupId, setConfirmSupId] = useState(null);
 
   const filtered = useMemo(() => {
-    if (!search) return suppliers;
-    const q = search.toLowerCase();
-    return suppliers.filter(s => s.name.toLowerCase().includes(q) || s.nameEN.toLowerCase().includes(q) || (s.contact||'').toLowerCase().includes(q) || (s.contacts||[]).some(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q)));
-  }, [suppliers, search]);
+    const natCmp = new Intl.Collator(lang === 'th' ? 'th' : 'en', { sensitivity: 'base' });
+    let list = suppliers;
+    if (search) {
+      const q = search.toLowerCase();
+      list = suppliers.filter(s => s.name.toLowerCase().includes(q) || s.nameEN.toLowerCase().includes(q) || (s.contact||'').toLowerCase().includes(q) || (s.contacts||[]).some(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q)));
+    }
+    return [...list].sort((a, b) => natCmp.compare(
+      lang === 'th' ? (a.name || '') : (a.nameEN || a.name || ''),
+      lang === 'th' ? (b.name || '') : (b.nameEN || b.name || '')
+    ));
+  }, [suppliers, search, lang]);
 
   const exportSuppliers = () => {
     if (!window.XLSX) { notify(L('กำลังโหลด SheetJS กรุณารอสักครู่', 'Loading SheetJS, please wait'), 'warn'); return; }

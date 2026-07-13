@@ -24,7 +24,8 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
     if (statusFilter) list = list.filter(o => o.status === statusFilter);
     if (monthFilter) list = list.filter(o => o.poDate?.startsWith(monthFilter));
-    return list.sort((a, b) => new Date(b.poDate) - new Date(a.poDate));
+    const natCmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return list.sort((a, b) => natCmp.compare(a.poNumber || '', b.poNumber || ''));
   }, [orders, search, branchFilter, statusFilter, monthFilter]);
 
   const pageData = filtered.slice((page - 1) * PER, page * PER);

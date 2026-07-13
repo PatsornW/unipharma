@@ -2503,7 +2503,8 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
     if (statusFilter) list = list.filter(o => o.status === statusFilter);
     if (monthFilter) list = list.filter(o => o.poDate?.startsWith(monthFilter));
-    return list.sort((a, b) => new Date(b.poDate) - new Date(a.poDate));
+    const natCmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return list.sort((a, b) => natCmp.compare(a.poNumber || '', b.poNumber || ''));
   }, [orders, search, branchFilter, statusFilter, monthFilter]);
 
   const pageData = filtered.slice((page - 1) * PER, page * PER);
@@ -3806,10 +3807,17 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
   const [confirmSupId, setConfirmSupId] = useState(null);
 
   const filtered = useMemo(() => {
-    if (!search) return suppliers;
-    const q = search.toLowerCase();
-    return suppliers.filter(s => s.name.toLowerCase().includes(q) || s.nameEN.toLowerCase().includes(q) || s.contact.toLowerCase().includes(q));
-  }, [suppliers, search]);
+    const natCmp = new Intl.Collator(lang === 'th' ? 'th' : 'en', { sensitivity: 'base' });
+    let list = suppliers;
+    if (search) {
+      const q = search.toLowerCase();
+      list = suppliers.filter(s => s.name.toLowerCase().includes(q) || s.nameEN.toLowerCase().includes(q) || s.contact.toLowerCase().includes(q));
+    }
+    return [...list].sort((a, b) => natCmp.compare(
+      lang === 'th' ? (a.name || '') : (a.nameEN || a.name || ''),
+      lang === 'th' ? (b.name || '') : (b.nameEN || b.name || '')
+    ));
+  }, [suppliers, search, lang]);
 
   const getSupStats = sup => {
     const supOrders = orders.filter(o => o.supplierId === sup.id && o.status !== 'cancelled');
@@ -5149,8 +5157,7 @@ function StockPage({ lang, L, drugs, orders, setPage, setShowCreate }) {
     if (statusFilter === 'low') list = list.filter(d => Object.entries(d.stock).some(([br, v]) => (!branchFilter || br === branchFilter) && v <= d.minStock));
     else if (statusFilter === 'warning') list = list.filter(d => Object.entries(d.stock).some(([br, v]) => (!branchFilter || br === branchFilter) && v > d.minStock && v <= d.minStock * 2));
     else if (statusFilter === 'ok') list = list.filter(d => Object.entries(d.stock).every(([br, v]) => !branchFilter || br !== branchFilter || v > d.minStock * 2));
-    if (branchFilter) list.sort((a, b) => a.stock[branchFilter] - b.stock[branchFilter]);
-    else list.sort((a, b) => (a.totalStock / a.minStock) - (b.totalStock / b.minStock));
+    list.sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
     return list;
   }, [drugs, search, catFilter, statusFilter, branchFilter]);
 
@@ -5871,10 +5878,11 @@ function ReportsPage({ lang, L, drugs, orders, suppliers }) {
 
   // Monthly movement by branch
   const monthOrders = useMemo(() => {
+    const natCmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     let list = orders.filter(o => o.status !== 'cancelled' && o.status !== 'draft');
     if (monthFilter) list = list.filter(o => o.poDate?.startsWith(monthFilter));
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
-    return list;
+    return list.sort((a, b) => natCmp.compare(a.poNumber || '', b.poNumber || ''));
   }, [orders, monthFilter, branchFilter]);
 
   const monthTotal = monthOrders.reduce((s, o) => s + (o.grandTotal || 0), 0);

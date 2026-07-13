@@ -19,10 +19,11 @@ function ReportsPage({ lang, L, drugs, orders, suppliers }) {
 
   // Monthly movement by branch
   const monthOrders = useMemo(() => {
+    const natCmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     let list = orders.filter(o => o.status !== 'cancelled' && o.status !== 'draft');
     if (monthFilter) list = list.filter(o => o.poDate?.startsWith(monthFilter));
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
-    return list;
+    return list.sort((a, b) => natCmp.compare(a.poNumber || '', b.poNumber || ''));
   }, [orders, monthFilter, branchFilter]);
 
   const monthTotal = monthOrders.reduce((s, o) => s + (o.grandTotal || 0), 0);
