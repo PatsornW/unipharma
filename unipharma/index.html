@@ -270,8 +270,6 @@ select.input{cursor:pointer}
      files so the site always works. -->
 <script>
 (function(){
-  // Kick off heavy optional libs immediately (async = don't block app startup).
-  // They finish downloading while Babel compiles JSX (~2-3s), so ready by first render.
   function preloadAsync(src) {
     var el = document.createElement('script');
     el.src = src;
@@ -281,19 +279,26 @@ select.input{cursor:pointer}
   preloadAsync('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js');
   preloadAsync('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js');
 
-  var v = '?v=20260710f';
-  function loadJS(src, type){
-    var el = document.createElement('script');
-    el.src = src + v;
-    if (type) el.type = type;
-    el.async = false;
-    document.body.appendChild(el);
+  var v = '20260713a';
+  function loadFallback() {
+    function loadJS(src, type) {
+      var el = document.createElement('script');
+      el.src = src + '?v=' + v;
+      if (type) el.type = type;
+      el.async = false;
+      document.body.appendChild(el);
+    }
+    ['config.js','data.js','utils.js','db.js'].forEach(function(f){ loadJS(f); });
+    ['auth.jsx','components.jsx','Dashboard.jsx','Drugs.jsx','Orders.jsx',
+     'CreatePO.jsx','PODocument.jsx','Suppliers.jsx','Comparison.jsx',
+     'Stock.jsx','OutOfStock.jsx','Reports.jsx','Help.jsx','DataSync.jsx',
+     'CategoryManager.jsx','tweaks-panel.jsx','app.jsx'].forEach(function(f){ loadJS(f, 'text/babel'); });
   }
-  ['config.js','data.js','utils.js','db.js'].forEach(function(f){ loadJS(f); });
-  ['auth.jsx','components.jsx','Dashboard.jsx','Drugs.jsx','Orders.jsx',
-   'CreatePO.jsx','PODocument.jsx','Suppliers.jsx','Comparison.jsx',
-   'Stock.jsx','OutOfStock.jsx','Reports.jsx','Help.jsx','DataSync.jsx',
-   'CategoryManager.jsx','tweaks-panel.jsx','app.jsx'].forEach(function(f){ loadJS(f, 'text/babel'); });
+  var bundle = document.createElement('script');
+  bundle.src = 'app.bundle.js?v=' + v;
+  bundle.async = false;
+  bundle.onerror = loadFallback;
+  document.body.appendChild(bundle);
 })();
 </script>
 </body>
