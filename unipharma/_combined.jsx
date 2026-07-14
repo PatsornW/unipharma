@@ -806,25 +806,11 @@ const UTILS = (() => {
         return null;
       }
     },
-    // Live subscription for the out_of_stock table. cb() is called on any change.
-    onOutOfStockChange(cb) {
-      if (!enabled || !client.channel) return function () {};
-      var ch = client.channel("uni-oos-" + Math.random().toString(36).slice(2))
-        .on("postgres_changes", { event: "*", schema: "public", table: "out_of_stock" }, function () { cb(); })
-        .subscribe();
-      return function () { try { client.removeChannel(ch); } catch (e) {} };
-    },
-    // Live subscription for master/transactional data. cb(kind, payload) per change.
-    onDataChange(cb) {
-      if (!enabled || !client.channel) return function () {};
-      var ch = client.channel("uni-data-" + Math.random().toString(36).slice(2))
-        .on("postgres_changes", { event: "*", schema: "public", table: "drugs" }, function (p) { cb("drugs", p); })
-        .on("postgres_changes", { event: "*", schema: "public", table: "suppliers" }, function (p) { cb("suppliers", p); })
-        .on("postgres_changes", { event: "*", schema: "public", table: "purchase_orders" }, function (p) { cb("orders", p); })
-        .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, function (p) { cb("categories", p); })
-        .subscribe();
-      return function () { try { client.removeChannel(ch); } catch (e) {} };
-    },
+    // Realtime disabled — was generating 15 GB/month egress on free tier (random channel
+    // names created a new channel per page load, never reused). Data stays fresh via cache
+    // TTLs + explicit reload after save. Re-enable if plan is upgraded to Pro.
+    onOutOfStockChange(cb) { return function () {}; },
+    onDataChange(cb) { return function () {}; },
 
     // ---- Authentication ----
     async getSession() {
