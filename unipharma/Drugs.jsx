@@ -564,7 +564,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
           </table>
         </div>
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-          <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} />
+          <Pagination page={page} total={filtered.length} perPage={PER_PAGE} onChange={setPage} lang={lang} />
         </div>
       </div>
 

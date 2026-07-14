@@ -214,7 +214,7 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
           </table>
         </div>
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-          <Pagination page={page} total={filtered.length} perPage={PER} onChange={setPage} />
+          <Pagination page={page} total={filtered.length} perPage={PER} onChange={setPage} lang={lang} />
         </div>
       </div>
 

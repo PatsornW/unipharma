@@ -175,7 +175,7 @@ function StockPage({ lang, L, drugs, orders, setPage, setShowCreate }) {
               </table>
             </div>
             <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
-              <Pagination page={page} total={filtered.length} perPage={PER} onChange={setPageNum} />
+              <Pagination page={page} total={filtered.length} perPage={PER} onChange={setPageNum} lang={lang} />
             </div>
           </div>
         </div>

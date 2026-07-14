@@ -46,7 +46,7 @@ function BranchBadge({ branchId }) {
 }
 
 /* ── Pagination ── */
-function Pagination({ page, total, perPage, onChange }) {
+function Pagination({ page, total, perPage, onChange, lang = 'th' }) {
   const totalPages = Math.ceil(total / perPage);
   if (totalPages <= 1) return null;
   const pages = [];
@@ -54,9 +54,13 @@ function Pagination({ page, total, perPage, onChange }) {
   if (page <= 3) end = Math.min(5, totalPages);
   if (page >= totalPages - 2) start = Math.max(1, totalPages - 4);
   for (let i = start; i <= end; i++) pages.push(i);
+  const from = Math.min((page-1)*perPage+1, total), to = Math.min(page*perPage, total);
+  const info = lang === 'th'
+    ? `แสดง ${from}–${to} จาก ${total.toLocaleString()} รายการ`
+    : `Showing ${from}–${to} of ${total.toLocaleString()} items`;
   return (
     <div className="pagination">
-      <span className="page-info">แสดง {Math.min((page-1)*perPage+1,total)}–{Math.min(page*perPage,total)} จาก {total.toLocaleString()} รายการ</span>
+      <span className="page-info">{info}</span>
       <button className="page-btn" disabled={page===1} onClick={()=>onChange(page-1)}>‹</button>
       {start > 1 && <><button className="page-btn" onClick={()=>onChange(1)}>1</button>{start>2&&<span className="page-info">…</span>}</>}
       {pages.map(p => <button key={p} className={`page-btn${p===page?' active':''}`} onClick={()=>onChange(p)}>{p}</button>)}
