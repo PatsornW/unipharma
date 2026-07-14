@@ -9,6 +9,12 @@ function App() {
       ['uni_drugs', 'uni_suppliers', 'uni_orders', 'uni_categories'].forEach(k => localStorage.removeItem(k));
       localStorage.setItem('uni_seed', 'real-data-v1');
     }
+    // Force dark theme + Thai as the permanent defaults (overwrites any old saved value once).
+    if (localStorage.getItem('uni_defaults') !== 'dark-th-v1') {
+      localStorage.setItem('uni_theme', 'dark');
+      localStorage.setItem('uni_lang', 'th');
+      localStorage.setItem('uni_defaults', 'dark-th-v1');
+    }
   } catch (e) {}
 
   const [page, setPage] = useState(() => {
