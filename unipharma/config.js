@@ -14,8 +14,8 @@
 // Keep your site URL private to limit who can reach the data.
 // ============================================================
 window.UNI_CONFIG = {
-  SUPABASE_URL: "https://vgrhhjvcctdvbbhqhvtw.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZncmhoanZjY3RkdmJiaHFodnR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NDMyMjAsImV4cCI6MjA5NzAxOTIyMH0.JNlXAE3Nbqx8QU7wr7RSUfa_DhILHt7mvaTAScPkedo",
+  SUPABASE_URL: "https://wddepvcmfqykidgbgnut.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkZGVwdmNtZnF5a2lkZ2JnbnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTgzMDcsImV4cCI6MjA5OTU5NDMwN30.Yp7h1_j2NW0_4iXofVa4jD-O3rAAA773xuUFfgfvxL4",
 
   // Set to true ONLY after you have:
   //   1. run database/auth.sql in Supabase,
