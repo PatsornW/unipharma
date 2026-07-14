@@ -1795,7 +1795,7 @@ function DashboardPage({ lang, L, drugs, orders, suppliers, setPage, setViewPO, 
       <div className="page-header">
         <div>
           <div className="page-title">{L('ภาพรวมระบบ', 'System Dashboard')}</div>
-          <div className="page-subtitle">UNIPHARMA — {UTILS.fmtDate('2026-06-14', lang)}</div>
+          <div className="page-subtitle">UNIPHARMA — {UTILS.fmtDate(new Date().toISOString().slice(0, 10), lang)}</div>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           + {L('สร้างใบสั่งซื้อ', 'New Purchase Order')}
@@ -6216,7 +6216,7 @@ Object.assign(window, { ReportsPage });
 /* ===== Help.jsx ===== */
 // Help.jsx — Dynamic User Guide (Update-friendly structure)
 
-function HelpPage({ lang, L, perm = { role: 'admin' } }) {
+function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCount = 0 }) {
   const [section, setSection] = useState('overview');
   const isAdmin = perm.role === 'admin';
 
@@ -6267,8 +6267,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
   // 🎯 EDIT HERE: Update data requirements
   const REQUIRED_DATA = [
     { th:'💊 Template ยา — 19 คอลัมน์', en:'💊 Drug Template — 19 columns',
-      current_th:'10,263 รายการ ✓', current_en:'10,263 items ✓',
-      needed_th:'10,263 รายการ (นำเข้าแล้ว)', needed_en:'10,263 items (imported)',
+      current_th:`${drugCount.toLocaleString()} รายการ ✓`, current_en:`${drugCount.toLocaleString()} items ✓`,
+      needed_th:`${drugCount.toLocaleString()} รายการ (นำเข้าแล้ว)`, needed_en:`${drugCount.toLocaleString()} items (imported)`,
       fields:[
         ['code','รหัสสินค้า'],['nameTH','ชื่อยา (ไทย)'],['nameEN','ชื่อยา (อังกฤษ)'],['unit','หน่วย (Dropdown)'],
         ['catId','หมวดหมู่ (Dropdown)'],['subId','หมวดย่อย (Dropdown)'],['hasVat','มี VAT (0/1)'],
@@ -6279,7 +6279,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
         ['remark','หมายเหตุสินค้า (Dropdown 8 ตัวเลือก)'],['remarkNote','หมายเหตุเพิ่มเติม'],
       ] },
     { th:'🏭 Template Supplier — 40 คอลัมน์', en:'🏭 Supplier Template — 40 columns',
-      current_th:'10 ราย', current_en:'10',
+      current_th:`${supplierCount} ราย`, current_en:`${supplierCount}`,
       needed_th:'410 ราย', needed_en:'410',
       fields:[
         ['id','รหัส Supplier'],['name','ชื่อบริษัท (ไทย)'],['nameEN','ชื่อบริษัท (อังกฤษ)'],
@@ -6298,8 +6298,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
 
   // 🎯 EDIT HERE: Update next steps
   const NEXT_STEPS = [
-    { priority:'🟢', icon:'💊', th:'นำเข้าฐานข้อมูลยา 10,263 รายการ (เสร็จแล้ว ✓)', en:'Import drugs — done ✓ (10,263 items)' },
-    { priority:'🔴', icon:'🏭', th:'นำเข้าผู้จัดจำหน่าย 410 ราย (Template 40 คอลัมน์ — รวม returnPolicy + ดีล 5 slot)', en:'Import 410 suppliers via 40-column template (returnPolicy + 5 deal slots included)' },
+    { priority:'🟢', icon:'💊', th:`นำเข้าฐานข้อมูลยา ${drugCount.toLocaleString()} รายการ (เสร็จแล้ว ✓)`, en:`Import drugs — done ✓ (${drugCount.toLocaleString()} items)` },
+    { priority: supplierCount >= 410 ? '🟢' : '🟡', icon:'🏭', th:`นำเข้าผู้จัดจำหน่าย (มีแล้ว ${supplierCount} ราย — เป้าหมาย 410 ราย; นำเข้าเพิ่มผ่าน DataSync หรือ Console Script)`, en:`Import suppliers (${supplierCount} loaded — target 410; import more via DataSync or Console Script)` },
     { priority:'🟡', icon:'📦', th:'บันทึกสต็อกจริงทั้ง 3 สาขา', en:'Record real stock all branches' },
     { priority:'🟡', icon:'🎁', th:'กรอกดีล/โปรโมชั่นใน Template แล้ว Import — หรือเพิ่มใน app ได้โดยตรง', en:'Fill deals in Supplier Template then import — or add directly in app' },
     { priority:'🟢', icon:'☁', th:'ฐานข้อมูลคลาวด์ Supabase (เชื่อมแล้ว ✓)', en:'Supabase cloud database (connected ✓)' },
@@ -6348,8 +6348,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' } }) {
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
               {[
                 {icon:'✅',th:'พร้อมใช้งานทันที',en:'Ready to use'},
-                {icon:'💊',th:'ข้อมูลยาจริง 10,263 รายการ',en:'10,263 real drugs'},
-                {icon:'🏭',th:'10 ผู้จัดจำหน่าย',en:'10 suppliers'},
+                {icon:'💊',th:`ข้อมูลยาจริง ${drugCount.toLocaleString()} รายการ`,en:`${drugCount.toLocaleString()} real drugs`},
+                {icon:'🏭',th:`${supplierCount} ผู้จัดจำหน่าย`,en:`${supplierCount} suppliers`},
                 {icon:'🇹🇭/🇺🇸',th:'2 ภาษา (ไทย/อังกฤษ)',en:'2 languages'},
                 {icon:'🌓',th:'โหมดมืด/สว่าง',en:'Dark/Light'},
                 {icon:'☁',th:'ซิงค์บนคลาวด์ (Supabase)',en:'Cloud sync (Supabase)'},
@@ -8785,7 +8785,7 @@ function App() {
         {curPage === 'stock' && <StockPage {...sharedProps} />}
         {curPage === 'out_of_stock' && <OutOfStockPage lang={lang} L={L} perm={perm} notify={notify} drugs={drugs} />}
         {curPage === 'reports' && <ReportsPage {...sharedProps} />}
-        {curPage === 'help' && <HelpPage lang={lang} L={L} perm={perm} />}
+        {curPage === 'help' && <HelpPage lang={lang} L={L} perm={perm} supplierCount={suppliers.length} drugCount={drugs.length} />}
         {curPage === 'sync' && perm.role === 'admin' && <DataSyncPage lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} suppliers={suppliers} setSuppliers={setSuppliers} notify={notify} perm={perm} />}
       </div>
 

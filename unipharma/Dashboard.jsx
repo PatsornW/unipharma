@@ -105,7 +105,7 @@ function DashboardPage({ lang, L, drugs, orders, suppliers, setPage, setViewPO, 
       <div className="page-header">
         <div>
           <div className="page-title">{L('ภาพรวมระบบ', 'System Dashboard')}</div>
-          <div className="page-subtitle">UNIPHARMA — {UTILS.fmtDate('2026-06-14', lang)}</div>
+          <div className="page-subtitle">UNIPHARMA — {UTILS.fmtDate(new Date().toISOString().slice(0, 10), lang)}</div>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           + {L('สร้างใบสั่งซื้อ', 'New Purchase Order')}

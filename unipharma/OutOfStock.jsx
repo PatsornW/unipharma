@@ -598,15 +598,15 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
   const exportOOS = (data, label) => {
     if (!window.XLSX) { notify(L('กำลังโหลด SheetJS', 'Loading SheetJS'), 'warn'); return; }
     const rows = data.map(r => ({
-      [L('วันที่แจ้ง', 'Reported At')]: r.timestamp ? new Date(r.timestamp).toLocaleString('th-TH') : '',
+      [L('วันที่แจ้ง', 'Reported At')]: r.createdAt ? new Date(r.createdAt).toLocaleString('th-TH') : (r.timestamp || ''),
       [L('รหัสสินค้า', 'Product Code')]: r.productCode || '',
       [L('ชื่อสินค้า', 'Product Name')]: r.productName || '',
       [L('สถานะ', 'Status')]: r.status || 'pending',
-      [L('คงเหลือ (ณ วันแจ้ง)', 'Qty at Report')]: r.qty ?? '',
+      [L('คงเหลือ (ณ วันแจ้ง)', 'Qty at Report')]: r.remainingQty ?? '',
       [L('แจ้งโดย', 'Reported By')]: r.reportedBy || '',
       [L('หมายเหตุ', 'Notes')]: r.notes || '',
       'ETA': r.eta || '',
-      [L('วันกลับมา', 'Back-in-stock')]: r.backInStock || '',
+      [L('วันกลับมา', 'Back-in-stock')]: r.backInStockDate || '',
       [L('วันที่ Arrived', 'Arrived At')]: r.resolvedAt ? new Date(r.resolvedAt).toLocaleString('th-TH') : '',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);

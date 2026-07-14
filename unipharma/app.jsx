@@ -329,7 +329,7 @@ function App() {
         {curPage === 'stock' && <StockPage {...sharedProps} />}
         {curPage === 'out_of_stock' && <OutOfStockPage lang={lang} L={L} perm={perm} notify={notify} drugs={drugs} />}
         {curPage === 'reports' && <ReportsPage {...sharedProps} />}
-        {curPage === 'help' && <HelpPage lang={lang} L={L} perm={perm} />}
+        {curPage === 'help' && <HelpPage lang={lang} L={L} perm={perm} supplierCount={suppliers.length} drugCount={drugs.length} />}
         {curPage === 'sync' && perm.role === 'admin' && <DataSyncPage lang={lang} L={L} drugs={drugs} setDrugs={setDrugs} suppliers={suppliers} setSuppliers={setSuppliers} notify={notify} perm={perm} />}
       </div>
 
