@@ -1268,7 +1268,25 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
       footer={<><button className="btn btn-ghost" onClick={onClose}>{L('ยกเลิก', 'Cancel')}</button><button className="btn btn-primary" onClick={handleSave}>{L('บันทึก', 'Save')}</button></>}>
       <div className="form-row">
         {inp('code', L('รหัสสินค้า', 'Product Code'), 'text', isEdit)}
-        {inp('unit', L('หน่วย', 'Unit'))}
+        <div className="form-group">
+          <label className="label">{L('หน่วย', 'Unit')}</label>
+          <select className={`input${errors.unit ? ' border-red' : ''}`} value={form.unit || ''} onChange={e => set('unit', e.target.value)}>
+            <option value="">{L('-- เลือกหน่วย --', '-- Select unit --')}</option>
+            {[
+              {key:'dosage',   label:L('หน่วยเม็ดยา','Dosage Forms')},
+              {key:'liquid',   label:L('หน่วยของเหลว','Liquid Forms')},
+              {key:'medical',  label:L('หน่วยทางการแพทย์','Medical Units')},
+              {key:'packaging',label:L('หน่วยบรรจุ/การขาย','Packaging & Sales')},
+            ].map(({key, label}) => {
+              const items = (DB.UNITS||[]).filter(u => u.group === key);
+              if (!items.length) return null;
+              return <optgroup key={key} label={label}>
+                {items.map(u => <option key={u.code} value={u.th}>{u.code} – {u.th}</option>)}
+              </optgroup>;
+            })}
+          </select>
+          {errors.unit && <div style={{color:'var(--err)',fontSize:11,marginTop:2}}>จำเป็นต้องกรอก</div>}
+        </div>
       </div>
       {inp('nameTH', L('ชื่อภาษาไทย', 'Thai Name'))}
       {inp('nameEN', L('ชื่อภาษาอังกฤษ', 'English Name'))}
@@ -1593,7 +1611,6 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers }) {
 function QuickDrugForm({ onSave, onClose, lang, L }) {
   const [form, setForm] = useState({ code: '', nameTH: '', nameEN: '', unit: 'เม็ด', unitMode: 'select' });
   const [errors, setErrors] = useState({});
-  const units = ['เม็ด', 'แคปซูล', 'ซอฟเจล', 'ขวด (ml)', 'ขวด (pcs)', 'แผง', 'ชุด', 'กระป๋อง'];
 
   const validate = () => {
     const e = {};
@@ -1659,7 +1676,18 @@ function QuickDrugForm({ onSave, onClose, lang, L }) {
 
         {form.unitMode === 'select' ? (
           <select className="input" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
-            {units.map(u => <option key={u} value={u}>{u}</option>)}
+            {[
+              {key:'dosage',   label:L('หน่วยเม็ดยา','Dosage Forms')},
+              {key:'liquid',   label:L('หน่วยของเหลว','Liquid Forms')},
+              {key:'medical',  label:L('หน่วยทางการแพทย์','Medical Units')},
+              {key:'packaging',label:L('หน่วยบรรจุ/การขาย','Packaging & Sales')},
+            ].map(({key, label}) => {
+              const items = (DB.UNITS||[]).filter(u => u.group === key);
+              if (!items.length) return null;
+              return <optgroup key={key} label={label}>
+                {items.map(u => <option key={u.code} value={u.th}>{u.code} – {u.th}</option>)}
+              </optgroup>;
+            })}
           </select>
         ) : (
           <input className="input" type="text" value={form.unit}
@@ -2814,7 +2842,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     return m;
   }, [drugs]);
 
-  const units = ['เม็ด', 'แคปซูล', 'ซอฟเจล', 'ขวด (ml)', 'ขวด (pcs)', 'แผง', 'ชุด', 'กระป๋อง'];
+  const units = DB.UNITS || [];
 
   const loadPriceHist = async (code) => {
     if (!window.UNI_DB?.loadPriceHistory || priceHist[code] !== undefined) return;
@@ -3386,7 +3414,14 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         </div>
                         {it.unitMode === 'select' ? (
                           <select className="input input-sm" value={it.unit} onChange={e => updateItem(it.code, 'unit', e.target.value)} style={{ width: '100%' }}>
-                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                            {[
+                              {key:'dosage',label:L('เม็ดยา','Dosage')},{key:'liquid',label:L('ของเหลว','Liquid')},
+                              {key:'medical',label:L('การแพทย์','Medical')},{key:'packaging',label:L('บรรจุ','Pack')},
+                            ].map(({key,label}) => {
+                              const items = units.filter(u=>u.group===key);
+                              if(!items.length) return null;
+                              return <optgroup key={key} label={label}>{items.map(u=><option key={u.code} value={u.th}>{u.code} – {u.th}</option>)}</optgroup>;
+                            })}
                           </select>
                         ) : (
                           <input className="input input-sm" type="text" value={it.unit} onChange={e => updateItem(it.code, 'unit', e.target.value)} placeholder={L('หน่วย', 'Unit')} style={{ width: '100%' }} />

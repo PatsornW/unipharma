@@ -133,7 +133,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     return m;
   }, [drugs]);
 
-  const units = ['เม็ด', 'แคปซูล', 'ซอฟเจล', 'ขวด (ml)', 'ขวด (pcs)', 'แผง', 'ชุด', 'กระป๋อง'];
+  const units = DB.UNITS || [];
 
   const loadPriceHist = async (code) => {
     if (!window.UNI_DB?.loadPriceHistory || priceHist[code] !== undefined) return;
@@ -710,7 +710,14 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
                         </div>
                         {it.unitMode === 'select' ? (
                           <select className="input input-sm" value={it.unit} onChange={e => updateItem(it.code, 'unit', e.target.value)} style={{ width: '100%' }}>
-                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                            {[
+                              {key:'dosage',label:L('เม็ดยา','Dosage')},{key:'liquid',label:L('ของเหลว','Liquid')},
+                              {key:'medical',label:L('การแพทย์','Medical')},{key:'packaging',label:L('บรรจุ','Pack')},
+                            ].map(({key,label}) => {
+                              const items = units.filter(u=>u.group===key);
+                              if(!items.length) return null;
+                              return <optgroup key={key} label={label}>{items.map(u=><option key={u.code} value={u.th}>{u.code} – {u.th}</option>)}</optgroup>;
+                            })}
                           </select>
                         ) : (
                           <input className="input input-sm" type="text" value={it.unit} onChange={e => updateItem(it.code, 'unit', e.target.value)} placeholder={L('หน่วย', 'Unit')} style={{ width: '100%' }} />

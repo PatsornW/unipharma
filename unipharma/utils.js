@@ -116,9 +116,12 @@ const UTILS = (() => {
     return months;
   }
 
-  // Unit translations
-  const UNIT_MAP = {'เม็ด':'Tablet','ขวด':'Bottle','แคปซูล':'Capsule','กระป๋อง':'MDI Inhaler',
-    'หลอด':'Tube','ปากกา':'Pen','แพ็ค':'Pack','กล่อง':'Box','เครื่อง':'Unit','ชุด':'Set','อัน':'Piece'};
+  // Unit translations — built from DB.UNITS + legacy fallbacks
+  const UNIT_MAP = {};
+  (DB.UNITS||[]).forEach(u => { UNIT_MAP[u.th] = u.en; UNIT_MAP[u.code] = u.en; });
+  Object.assign(UNIT_MAP, {'เม็ด':'Tablet','ขวด':'Bottle','แคปซูล':'Capsule','กระป๋อง':'Can',
+    'หลอด':'Tube','ปากกา':'Pen','แพ็ค':'Pack','กล่อง':'Box','เครื่อง':'Unit','ชุด':'Set','อัน':'Piece',
+    'ซอฟเจล':'Softgel','ขวด (ml)':'Bottle (ml)','ขวด (pcs)':'Bottle (pcs)'});
   function getUnit(u, lang){ return lang==='en' ? (UNIT_MAP[u]||u) : u; }
 
   // Supplier category translations
@@ -141,15 +144,49 @@ const UTILS = (() => {
   // Packaging hierarchy by unit type
   // qty = total BASE units contained in 1 of that level (absolute).
   const PKG_MAP = {
-    'เม็ด':    { base:'เม็ด',   baseEN:'Tablet',   levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:2400}]},
-    'แคปซูล':{ base:'แคปซูล',baseEN:'Capsule', levels:[{th:'แผง',en:'Strip',  qty:10},{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:2400}]},
-    'ขวด':    { base:'ขวด',   baseEN:'Bottle',   levels:[{th:'แพ็ค',en:'Pack', qty:6},{th:'โหล',en:'Dozen', qty:12},{th:'ลัง',en:'Carton', qty:24}]},
-    'กระป๋อง':{ base:'กระป๋อง',baseEN:'MDI',     levels:[{th:'กล่อง',en:'Box',    qty:1},{th:'ลัง',en:'Carton', qty:6}]},
-    'หลอด':    { base:'หลอด',   baseEN:'Tube',     levels:[{th:'กล่อง',en:'Box',    qty:1},{th:'ลัง',en:'Carton', qty:12}]},
-    'ปากกา':  { base:'ปากกา',  baseEN:'Pen',      levels:[{th:'กล่อง',en:'Box',    qty:5}]},
-    'แพ็ค':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'แพ็ค',en:'Pack',   qty:100},{th:'ลัง',en:'Carton', qty:1000}]},
-    'กล่อง':    { base:'ชิ้น',   baseEN:'Piece',    levels:[{th:'กล่อง',en:'Box',    qty:100},{th:'ลัง',en:'Carton', qty:1200}]},
-    'เครื่อง':  { base:'เครื่อง',  baseEN:'Unit',     levels:[{th:'กล่อง',en:'Box',    qty:1}]},
+    // Dosage forms — tablet-like (strip → box → carton)
+    'เม็ด':              { base:'เม็ด',              baseEN:'Tablet',     levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:2400}]},
+    'แคปซูล':            { base:'แคปซูล',            baseEN:'Capsule',    levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:2400}]},
+    'ซอฟต์เจล':          { base:'ซอฟต์เจล',          baseEN:'Softgel',    levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:2400}]},
+    'เม็ดเคลือบลำไส้':   { base:'เม็ดเคลือบลำไส้',   baseEN:'EC Tablet',  levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:2400}]},
+    'เม็ดเคลือบฟิล์ม':  { base:'เม็ดเคลือบฟิล์ม',  baseEN:'FC Tablet',  levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:2400}]},
+    'เม็ดเคี้ยว':        { base:'เม็ดเคี้ยว',        baseEN:'Chewable',   levels:[{th:'กล่อง',en:'Box',qty:30},{th:'ลัง',en:'Carton',qty:360}]},
+    'เม็ดละลายในปาก':   { base:'เม็ดละลายในปาก',   baseEN:'ODT',        levels:[{th:'แผง',en:'Strip',qty:10},{th:'กล่อง',en:'Box',qty:100}]},
+    'ยาอม':              { base:'เม็ด',              baseEN:'Lozenge',    levels:[{th:'กล่อง',en:'Box',qty:24},{th:'ลัง',en:'Carton',qty:288}]},
+    'ยาอมชนิดเม็ด':      { base:'เม็ด',              baseEN:'Pastille',   levels:[{th:'กล่อง',en:'Box',qty:24}]},
+    'ผงยา':              { base:'ซอง',              baseEN:'Sachet',     levels:[{th:'กล่อง',en:'Box',qty:10},{th:'ลัง',en:'Carton',qty:120}]},
+    'เม็ดแกรนูล':        { base:'ซอง',              baseEN:'Sachet',     levels:[{th:'กล่อง',en:'Box',qty:10},{th:'ลัง',en:'Carton',qty:120}]},
+    'ยาผงชนิดซอง':       { base:'ซอง',              baseEN:'Sachet',     levels:[{th:'กล่อง',en:'Box',qty:10},{th:'ลัง',en:'Carton',qty:120}]},
+    'ยาเหน็บ':           { base:'เหน็บ',            baseEN:'Suppository',levels:[{th:'กล่อง',en:'Box',qty:10},{th:'ลัง',en:'Carton',qty:120}]},
+    'ยาเหน็บช่องคลอด':   { base:'เหน็บ',            baseEN:'Pessary',    levels:[{th:'กล่อง',en:'Box',qty:6}]},
+    // Liquid forms
+    'มิลลิลิตร':         { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:6},{th:'ลัง',en:'Carton',qty:24}]},
+    'ลิตร':              { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:4},{th:'ลัง',en:'Carton',qty:12}]},
+    'ซีซี':              { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:6},{th:'ลัง',en:'Carton',qty:24}]},
+    'หยด':               { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:12},{th:'ลัง',en:'Carton',qty:144}]},
+    'สเปรย์':            { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:6}]},
+    'ยาน้ำเชื่อม':        { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:6},{th:'ลัง',en:'Carton',qty:24}]},
+    'สารละลาย':          { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:6},{th:'ลัง',en:'Carton',qty:24}]},
+    'ยาแขวนตะกอน':       { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'แพ็ก',en:'Pack',qty:6},{th:'ลัง',en:'Carton',qty:24}]},
+    'อิมัลชัน':          { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:12}]},
+    'น้ำยากลั้วคอ':       { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:12}]},
+    'น้ำยาบ้วนปาก':       { base:'ขวด',              baseEN:'Bottle',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:12}]},
+    // Medical units
+    'หลอดยา':            { base:'หลอดยา',            baseEN:'Ampoule',    levels:[{th:'กล่อง',en:'Box',qty:5},{th:'ลัง',en:'Carton',qty:100}]},
+    'ไวอัล':             { base:'ไวอัล',             baseEN:'Vial',       levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:12}]},
+    'กระบอกฉีดยาพร้อมใช้':{ base:'กระบอก',          baseEN:'PFS',        levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:10}]},
+    'กระบอกฉีดยา':       { base:'กระบอก',           baseEN:'Syringe',    levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:10}]},
+    'แผ่นแปะยา':         { base:'แผ่น',             baseEN:'Patch',      levels:[{th:'กล่อง',en:'Box',qty:10},{th:'ลัง',en:'Carton',qty:100}]},
+    'เครื่องพ่นยา':       { base:'เครื่อง',          baseEN:'Inhaler',    levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:6}]},
+    'ปากกาฉีดยา':        { base:'ปากกา',            baseEN:'Pen',        levels:[{th:'กล่อง',en:'Box',qty:5}]},
+    // Legacy keys (backward compat)
+    'ขวด':    { base:'ขวด',   baseEN:'Bottle',   levels:[{th:'แพ็ก',en:'Pack', qty:6},{th:'โหล',en:'Dozen',qty:12},{th:'ลัง',en:'Carton',qty:24}]},
+    'กระป๋อง':{ base:'กระป๋อง',baseEN:'Can',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:6}]},
+    'หลอด':   { base:'หลอด',  baseEN:'Tube',     levels:[{th:'กล่อง',en:'Box',qty:1},{th:'ลัง',en:'Carton',qty:12}]},
+    'ปากกา':  { base:'ปากกา', baseEN:'Pen',      levels:[{th:'กล่อง',en:'Box',qty:5}]},
+    'แพ็ค':   { base:'ชิ้น',  baseEN:'Piece',    levels:[{th:'แพ็ก',en:'Pack',qty:100},{th:'ลัง',en:'Carton',qty:1000}]},
+    'กล่อง':  { base:'ชิ้น',  baseEN:'Piece',    levels:[{th:'กล่อง',en:'Box',qty:100},{th:'ลัง',en:'Carton',qty:1200}]},
+    'เครื่อง':{ base:'เครื่อง',baseEN:'Unit',     levels:[{th:'กล่อง',en:'Box',qty:1}]},
   };
   function getPackaging(unit, lang, drug){
     // qty = how many BASE units are in 1 of this level (absolute, not nested).

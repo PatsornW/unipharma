@@ -121,5 +121,72 @@ const DB = (() => {
   const PURCHASE_ORDERS = [];
   const STOCK_MOVEMENTS = [];
 
-  return {BRANCHES,CATEGORIES,DRUGS,SUPPLIERS,COMP_PRICES,PURCHASE_ORDERS,STOCK_MOVEMENTS};
+  const UNITS = [
+    // 1. หน่วยเม็ดยา (Dosage Forms)
+    { code:'TAB',      th:'เม็ด',               en:'Tablet',                    group:'dosage' },
+    { code:'CAP',      th:'แคปซูล',             en:'Capsule',                   group:'dosage' },
+    { code:'SGC',      th:'ซอฟต์เจล',           en:'Softgel Capsule',           group:'dosage' },
+    { code:'ECT',      th:'เม็ดเคลือบลำไส้',    en:'Enteric-coated Tablet',     group:'dosage' },
+    { code:'FCT',      th:'เม็ดเคลือบฟิล์ม',   en:'Film-coated Tablet',        group:'dosage' },
+    { code:'CHEW',     th:'เม็ดเคี้ยว',          en:'Chewable Tablet',           group:'dosage' },
+    { code:'ODT',      th:'เม็ดละลายในปาก',     en:'Orally Disintegrating Tablet',group:'dosage' },
+    { code:'LOZ',      th:'ยาอม',               en:'Lozenge',                   group:'dosage' },
+    { code:'PAST',     th:'ยาอมชนิดเม็ด',        en:'Pastille',                  group:'dosage' },
+    { code:'POW',      th:'ผงยา',               en:'Powder',                    group:'dosage' },
+    { code:'GRAN',     th:'เม็ดแกรนูล',          en:'Granules',                  group:'dosage' },
+    { code:'SACH',     th:'ยาผงชนิดซอง',         en:'Sachet',                    group:'dosage' },
+    { code:'SUPP',     th:'ยาเหน็บ',             en:'Suppository',               group:'dosage' },
+    { code:'PESS',     th:'ยาเหน็บช่องคลอด',     en:'Pessary',                   group:'dosage' },
+    // 2. หน่วยของเหลว (Liquid Forms)
+    { code:'ML',       th:'มิลลิลิตร',           en:'Milliliter',                group:'liquid' },
+    { code:'L',        th:'ลิตร',               en:'Liter',                     group:'liquid' },
+    { code:'CC',       th:'ซีซี',               en:'Cubic Centimeter',          group:'liquid' },
+    { code:'DROP',     th:'หยด',               en:'Drop',                      group:'liquid' },
+    { code:'SPRAY',    th:'สเปรย์',             en:'Spray',                     group:'liquid' },
+    { code:'SYRUP',    th:'ยาน้ำเชื่อม',         en:'Syrup',                     group:'liquid' },
+    { code:'SOL',      th:'สารละลาย',            en:'Solution',                  group:'liquid' },
+    { code:'SUSP',     th:'ยาแขวนตะกอน',         en:'Suspension',                group:'liquid' },
+    { code:'EMUL',     th:'อิมัลชัน',            en:'Emulsion',                  group:'liquid' },
+    { code:'GARGLE',   th:'น้ำยากลั้วคอ',         en:'Gargle',                    group:'liquid' },
+    { code:'MOUTHWASH',th:'น้ำยาบ้วนปาก',         en:'Mouthwash',                 group:'liquid' },
+    // 3. หน่วยทางการแพทย์ (Medical Units)
+    { code:'AMP',      th:'หลอดยา',             en:'Ampoule',                   group:'medical' },
+    { code:'VIAL',     th:'ไวอัล',              en:'Vial',                      group:'medical' },
+    { code:'PFS',      th:'กระบอกฉีดยาพร้อมใช้', en:'Prefilled Syringe',         group:'medical' },
+    { code:'SYR',      th:'กระบอกฉีดยา',        en:'Syringe',                   group:'medical' },
+    { code:'NEEDLE',   th:'เข็ม',               en:'Needle',                    group:'medical' },
+    { code:'KIT',      th:'ชุดตรวจ/ชุดอุปกรณ์',  en:'Kit',                       group:'medical' },
+    { code:'TEST',     th:'ชุดทดสอบ',            en:'Test',                      group:'medical' },
+    { code:'DOSE',     th:'โดส',               en:'Dose',                      group:'medical' },
+    { code:'IU',       th:'หน่วยสากล',           en:'International Unit',        group:'medical' },
+    { code:'UNIT',     th:'หน่วย',              en:'Unit',                      group:'medical' },
+    { code:'PATCH',    th:'แผ่นแปะยา',           en:'Patch',                     group:'medical' },
+    { code:'INHALER',  th:'เครื่องพ่นยา',        en:'Inhaler',                   group:'medical' },
+    { code:'PEN',      th:'ปากกาฉีดยา',          en:'Injection Pen',             group:'medical' },
+    // 4. หน่วยบรรจุ / การขาย (Packaging & Sales Units)
+    { code:'EA',       th:'ชิ้น',               en:'Each',                      group:'packaging' },
+    { code:'PC',       th:'ชิ้น (PC)',           en:'Piece',                     group:'packaging' },
+    { code:'PCS',      th:'หลายชิ้น',            en:'Pieces',                    group:'packaging' },
+    { code:'BOX',      th:'กล่อง',              en:'Box',                       group:'packaging' },
+    { code:'CTN',      th:'ลัง',               en:'Carton',                    group:'packaging' },
+    { code:'CASE',     th:'ลังใหญ่',             en:'Case',                      group:'packaging' },
+    { code:'PK',       th:'แพ็ก',              en:'Pack',                      group:'packaging' },
+    { code:'SET',      th:'ชุด',               en:'Set',                       group:'packaging' },
+    { code:'BAG',      th:'ถุง',               en:'Bag',                       group:'packaging' },
+    { code:'POUCH',    th:'ซอง',               en:'Pouch',                     group:'packaging' },
+    { code:'BTL',      th:'ขวด',               en:'Bottle',                    group:'packaging' },
+    { code:'JAR',      th:'กระปุก',             en:'Jar',                       group:'packaging' },
+    { code:'CAN',      th:'กระป๋อง',            en:'Can',                       group:'packaging' },
+    { code:'TUBE',     th:'หลอด',              en:'Tube',                      group:'packaging' },
+    { code:'ROLL',     th:'ม้วน',              en:'Roll',                      group:'packaging' },
+    { code:'REAM',     th:'รีม',               en:'Ream',                      group:'packaging' },
+    { code:'PAIR',     th:'คู่',               en:'Pair',                      group:'packaging' },
+    { code:'DOZ',      th:'โหล',               en:'Dozen',                     group:'packaging' },
+    { code:'INNER',    th:'แพ็กใน',             en:'Inner Pack',                group:'packaging' },
+    { code:'SHRINK',   th:'แพ็กหด',             en:'Shrink Pack',               group:'packaging' },
+    { code:'DISPLAY',  th:'กล่องโชว์',           en:'Display Box',               group:'packaging' },
+    { code:'PALLET',   th:'พาเลท',             en:'Pallet',                    group:'packaging' },
+  ];
+
+  return {BRANCHES,CATEGORIES,DRUGS,SUPPLIERS,COMP_PRICES,PURCHASE_ORDERS,STOCK_MOVEMENTS,UNITS};
 })();
