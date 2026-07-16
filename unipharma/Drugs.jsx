@@ -71,11 +71,13 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [cwStock, setCwStock] = useState({});
   const [cwSyncedAt, setCwSyncedAt] = useState(null);
+  const cwAutoSynced = React.useRef(false);
 
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
 
   // Load CW Pharma stock — cached in IDB via UNI_DB.loadCwStock (6 h TTL)
+  // Also auto-updates nameEN for products whose CW name differs from the system name
   useEffect(() => {
     if (!window.UNI_DB || !window.UNI_DB.enabled) return;
     window.UNI_DB.loadCwStock().then(data => {
@@ -84,6 +86,31 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       data.forEach(r => { map[r.code] = r; });
       setCwStock(map);
       setCwSyncedAt(data[0].synced_at);
+
+      if (cwAutoSynced.current) return;
+      cwAutoSynced.current = true;
+
+      const _sim = window._nameSim || (() => 1);
+      const mismatched = drugs.filter(d => {
+        const cw = map[d.code];
+        return cw && cw.name && _sim(cw.name, d.nameEN || '') < 0.85;
+      });
+      if (!mismatched.length) return;
+
+      Promise.all(mismatched.map(d => {
+        const updated = { ...d, nameEN: map[d.code].name };
+        return window.UNI_DB.saveDrug(updated).then(() => updated);
+      })).then(updatedList => {
+        setDrugs(prev => prev.map(d => {
+          const u = updatedList.find(u => u.code === d.code);
+          return u || d;
+        }));
+        if (notify) notify(
+          L('อัปเดตชื่อ EN ' + mismatched.length + ' รายการจาก CW Pharma อัตโนมัติ',
+            'Auto-updated ' + mismatched.length + ' English names from CW Pharma'),
+          'ok'
+        );
+      });
     });
   }, []);
 
