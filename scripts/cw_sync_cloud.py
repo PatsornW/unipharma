@@ -410,6 +410,7 @@ if __name__ == "__main__":
                 print(f"Screenshot saved to {DOWNLOAD_DIR}/error_screenshot.png")
             except Exception:
                 pass
+            sys.exit(1)  # fail the GitHub Actions run so the error is visible
 
         finally:
             time.sleep(3)
