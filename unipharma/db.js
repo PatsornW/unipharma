@@ -524,15 +524,21 @@
         }
       }
       try {
-        var res = await client.from('cwpharma_stock_test')
-          .select('code,name,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
-          .limit(15000);
-        if (res.error) throw res.error;
-        var data = res.data || [];
-        await idbSet('cwstock', data);
+        var PAGE = 1000, all = [], from = 0;
+        while (true) {
+          var res = await client.from('cwpharma_stock_test')
+            .select('code,name,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+            .range(from, from + PAGE - 1);
+          if (res.error) throw res.error;
+          var chunk = res.data || [];
+          all = all.concat(chunk);
+          if (chunk.length < PAGE) break;
+          from += PAGE;
+        }
+        await idbSet('cwstock', all);
         try { localStorage.setItem('uni_cw_idb_ts', Date.now().toString()); } catch(e) {}
-        console.info('[UNI_DB] CW stock fetched — ' + data.length + ' items');
-        return data;
+        console.info('[UNI_DB] CW stock fetched — ' + all.length + ' items');
+        return all;
       } catch(e) {
         console.warn('[UNI_DB] loadCwStock:', e && (e.message || String(e)));
         return null;
