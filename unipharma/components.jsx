@@ -205,16 +205,49 @@ function _nameSim(a, b) {
 }
 async function _gtranslate(text, from, to) {
   if (!text || !text.trim()) return '';
+  const apiKey = (window.UNI_CONFIG && window.UNI_CONFIG.ANTHROPIC_API_KEY) || '';
+  if (apiKey) {
+    try {
+      const langNames = { th: 'Thai (ภาษาไทย)', en: 'English' };
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-client-side-allow-browser': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          messages: [{ role: 'user', content:
+            `Translate this pharmaceutical product name from ${langNames[from]||from} to ${langNames[to]||to}.\n` +
+            `Rules:\n` +
+            `- Keep brand names, transliterate phonetically to Thai script when translating to Thai\n` +
+            `- Preserve all numbers and units exactly (mg, mL, g, mcg, IU, etc.)\n` +
+            `- "60s" or "60's" means 60 units/tablets/capsules — not seconds\n` +
+            `- Use standard Thai pharmaceutical terminology\n` +
+            `- Return ONLY the translated name, no explanation\n\n` +
+            `Name: ${text}`
+          }]
+        })
+      });
+      if (!r.ok) throw new Error('status ' + r.status);
+      const j = await r.json();
+      const result = (((j.content || [])[0]) || {}).text || '';
+      if (result.trim()) return result.trim();
+    } catch(e) { console.warn('[translate] Claude Haiku failed, using Google Translate:', e); }
+  }
   try {
     const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`);
     if (!r.ok) return '';
     const j = await r.json();
-    return (j[0] || []).map(d => d[0]).join('').trim();
+    return (j[0] || []).filter(Boolean).map(d => d[0] || '').join('').trim();
   } catch(e) { return ''; }
 }
 
 /* ── Drug Form (Add/Edit) ── */
-function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs = [], onReuseCode }) {
+function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs = [], onReuseCode, cwName = '' }) {
   const cats = DB.CATEGORIES;
   const [form, setForm] = useState(() => {
     if (drug) {
@@ -387,6 +420,25 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs =
         <input className={`input${errors.nameEN?' border-red':''}`} type="text" value={form.nameEN||''}
           onChange={e=>set('nameEN',e.target.value)} />
         {errors.nameEN && <div style={{color:'var(--err)',fontSize:11,marginTop:2}}>จำเป็นต้องกรอก</div>}
+        {cwName && _nameSim(cwName, form.nameEN||'') < 0.85 && (
+          <div style={{marginTop:6,padding:'8px 12px',background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.35)',borderRadius:6,fontSize:12}}>
+            📦 {L('ชื่อใน CW Pharma','CW name')}: <strong>{cwName}</strong>
+            <div style={{marginTop:6,display:'flex',gap:6,flexWrap:'wrap'}}>
+              <button type="button" className="btn btn-xs btn-primary" onClick={()=>set('nameEN',cwName)}>
+                {L('ใช้ชื่อนี้','Use this name')}
+              </button>
+              <button type="button" className="btn btn-xs btn-ghost" disabled={!!xlating} onClick={async()=>{
+                set('nameEN',cwName);
+                setXlating('cwTH');
+                const r = await _gtranslate(cwName,'en','th');
+                if(r) set('nameTH',r);
+                setXlating('');
+              }}>
+                {xlating==='cwTH'?'⏳':'🤖'} {L('ใช้ชื่อนี้ + แปลเป็น TH','Use + translate → TH')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="form-row">
         <div className="form-group">

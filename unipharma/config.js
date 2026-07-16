@@ -17,6 +17,11 @@ window.UNI_CONFIG = {
   SUPABASE_URL: "https://wddepvcmfqykidgbgnut.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkZGVwdmNtZnF5a2lkZ2JnbnV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTgzMDcsImV4cCI6MjA5OTU5NDMwN30.Yp7h1_j2NW0_4iXofVa4jD-O3rAAA773xuUFfgfvxL4",
 
+  // AI Translation — Claude Haiku (แม่นยำกว่า Google Translate สำหรับชื่อยา)
+  // รับ key ได้ที่ https://console.anthropic.com → API Keys → Create Key
+  // เติม key แล้ว deploy ใหม่เพื่อเปิดใช้ AI translation (ปล่อยว่างเพื่อใช้ Google Translate)
+  ANTHROPIC_API_KEY: '',
+
   // Set to true ONLY after you have:
   //   1. run database/auth.sql in Supabase,
   //   2. created at least one user (Authentication → Users → Add user),

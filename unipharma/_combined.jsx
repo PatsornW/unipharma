@@ -793,7 +793,7 @@ const UTILS = (() => {
       }
       try {
         var res = await client.from('cwpharma_stock_test')
-          .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+          .select('code,name,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
           .limit(15000);
         if (res.error) throw res.error;
         var data = res.data || [];
@@ -1174,16 +1174,49 @@ function _nameSim(a, b) {
 }
 async function _gtranslate(text, from, to) {
   if (!text || !text.trim()) return '';
+  const apiKey = (window.UNI_CONFIG && window.UNI_CONFIG.ANTHROPIC_API_KEY) || '';
+  if (apiKey) {
+    try {
+      const langNames = { th: 'Thai (ภาษาไทย)', en: 'English' };
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-client-side-allow-browser': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          messages: [{ role: 'user', content:
+            `Translate this pharmaceutical product name from ${langNames[from]||from} to ${langNames[to]||to}.\n` +
+            `Rules:\n` +
+            `- Keep brand names, transliterate phonetically to Thai script when translating to Thai\n` +
+            `- Preserve all numbers and units exactly (mg, mL, g, mcg, IU, etc.)\n` +
+            `- "60s" or "60's" means 60 units/tablets/capsules — not seconds\n` +
+            `- Use standard Thai pharmaceutical terminology\n` +
+            `- Return ONLY the translated name, no explanation\n\n` +
+            `Name: ${text}`
+          }]
+        })
+      });
+      if (!r.ok) throw new Error('status ' + r.status);
+      const j = await r.json();
+      const result = (((j.content || [])[0]) || {}).text || '';
+      if (result.trim()) return result.trim();
+    } catch(e) { console.warn('[translate] Claude Haiku failed, using Google Translate:', e); }
+  }
   try {
     const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`);
     if (!r.ok) return '';
     const j = await r.json();
-    return (j[0] || []).map(d => d[0]).join('').trim();
+    return (j[0] || []).filter(Boolean).map(d => d[0] || '').join('').trim();
   } catch(e) { return ''; }
 }
 
 /* ── Drug Form (Add/Edit) ── */
-function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs = [], onReuseCode }) {
+function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs = [], onReuseCode, cwName = '' }) {
   const cats = DB.CATEGORIES;
   const [form, setForm] = useState(() => {
     if (drug) {
@@ -1356,6 +1389,25 @@ function DrugForm({ drug, onSave, onClose, lang, L, suppliers, drugs: allDrugs =
         <input className={`input${errors.nameEN?' border-red':''}`} type="text" value={form.nameEN||''}
           onChange={e=>set('nameEN',e.target.value)} />
         {errors.nameEN && <div style={{color:'var(--err)',fontSize:11,marginTop:2}}>จำเป็นต้องกรอก</div>}
+        {cwName && _nameSim(cwName, form.nameEN||'') < 0.85 && (
+          <div style={{marginTop:6,padding:'8px 12px',background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.35)',borderRadius:6,fontSize:12}}>
+            📦 {L('ชื่อใน CW Pharma','CW name')}: <strong>{cwName}</strong>
+            <div style={{marginTop:6,display:'flex',gap:6,flexWrap:'wrap'}}>
+              <button type="button" className="btn btn-xs btn-primary" onClick={()=>set('nameEN',cwName)}>
+                {L('ใช้ชื่อนี้','Use this name')}
+              </button>
+              <button type="button" className="btn btn-xs btn-ghost" disabled={!!xlating} onClick={async()=>{
+                set('nameEN',cwName);
+                setXlating('cwTH');
+                const r = await _gtranslate(cwName,'en','th');
+                if(r) set('nameTH',r);
+                setXlating('');
+              }}>
+                {xlating==='cwTH'?'⏳':'🤖'} {L('ใช้ชื่อนี้ + แปลเป็น TH','Use + translate → TH')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="form-row">
         <div className="form-group">
@@ -2162,9 +2214,22 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const [showPkg, setShowPkg] = useState(false);
   const [expandedCode, setExpandedCode] = useState(null);
   const [showCatMgr, setShowCatMgr] = useState(false);
+  const [cwStock, setCwStock] = useState({});
+  const [cwSyncedAt, setCwSyncedAt] = useState(null);
 
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
+
+  useEffect(() => {
+    if (!window.UNI_DB || !window.UNI_DB.enabled) return;
+    window.UNI_DB.loadCwStock().then(data => {
+      if (!data || !data.length) return;
+      const map = {};
+      data.forEach(r => { map[r.code] = r; });
+      setCwStock(map);
+      setCwSyncedAt(data[0].synced_at);
+    });
+  }, []);
 
   // Count items available per branch (stock > 0)
   const branchCounts = useMemo(() => {
@@ -2427,7 +2492,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                 <ColHead col="costEx">{L('ต้นทุน', 'Cost')}{branchFilter ? ` [${branchFilter}]` : ''}</ColHead>
                 <ColHead col="sellEx">{L('ราคาขาย', 'Sell Price')}</ColHead>
                 <ColHead col="profitMargin">{L('กำไร', 'Profit')}</ColHead>
-                <ColHead col="totalStock">{L('สต็อกรวม', 'Total Stock')}</ColHead>
+                <ColHead col="totalStock">{Object.keys(cwStock).length ? L('Stock CW (3 สาขา)', 'Stock CW (3 branches)') : L('สต็อกรวม', 'Total Stock')}</ColHead>
                 <th style={{ textAlign: 'center' }}>{L('จัดการ', 'Action')}</th>
               </tr>
             </thead>
@@ -2503,24 +2568,49 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                         <div style={{ fontSize: 10, color: 'var(--txt3)' }}>{d.profitMargin}%</div>
                       </td>
                       <td>
-                        {branchFilter ? (
-                          <span style={{ color: (d.stock?.[branchFilter]||0) <= d.minStock ? 'var(--err)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
-                            {(d.stock?.[branchFilter]||0).toLocaleString()}
-                          </span>
-                        ) : (
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <span style={{ color: ss === 'err' ? 'var(--err)' : ss === 'warn' ? 'var(--warn)' : 'var(--ok)', fontWeight: 700, fontSize: 13 }}>
-                              {d.totalStock.toLocaleString()}
+                        {(() => {
+                          const cw = cwStock[d.code];
+                          if (cw) {
+                            const brs = [
+                              { id: 'PTN', val: cw.stock_00 ?? 0 },
+                              { id: 'RAM', val: cw.stock_01 ?? 0 },
+                              { id: 'CNX', val: cw.stock_02 ?? 0 },
+                            ];
+                            return (
+                              <div style={{ display:'flex', gap:3 }}>
+                                {brs.map(b => (
+                                  <span key={b.id} style={{
+                                    display:'inline-flex', flexDirection:'column', alignItems:'center',
+                                    minWidth:34, background: b.val > 10 ? 'var(--ok-bg)' : b.val > 0 ? 'var(--warn-bg)' : 'var(--err-bg)',
+                                    borderRadius:6, padding:'2px 3px', gap:0,
+                                  }}>
+                                    <span style={{ fontSize:9, color:'var(--txt3)', fontWeight:600 }}>{b.id}</span>
+                                    <span style={{ fontSize:12, fontWeight:700, color: b.val > 10 ? 'var(--ok)' : b.val > 0 ? 'var(--warn)' : 'var(--err)' }}>{b.val}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                          if (branchFilter) return (
+                            <span style={{ color:(d.stock?.[branchFilter]||0)<=d.minStock?'var(--err)':'var(--ok)', fontWeight:700, fontSize:13 }}>
+                              {(d.stock?.[branchFilter]||0).toLocaleString()}
                             </span>
-                            <div style={{ display: 'flex', gap: 3, fontSize: 10 }}>
-                              {DB.BRANCHES.map(br => (
-                                <span key={br.id} style={{ color: d.stock[br.id] <= d.minStock ? 'var(--err)' : 'var(--txt4)' }}>
-                                  {br.id}:{d.stock[br.id]}
-                                </span>
-                              ))}
+                          );
+                          return (
+                            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                              <span style={{ color:ss==='err'?'var(--err)':ss==='warn'?'var(--warn)':'var(--ok)', fontWeight:700, fontSize:13 }}>
+                                {d.totalStock.toLocaleString()}
+                              </span>
+                              <div style={{ display:'flex', gap:3, fontSize:10 }}>
+                                {DB.BRANCHES.map(br => (
+                                  <span key={br.id} style={{ color:d.stock[br.id]<=d.minStock?'var(--err)':'var(--txt4)' }}>
+                                    {br.id}:{d.stock[br.id]}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </td>
                       <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         {perm.canWrite ? (
@@ -2629,6 +2719,49 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                                 </div>
                               );
                             })()}
+                            {(() => {
+                              const cw = cwStock[d.code];
+                              if (!cw) return null;
+                              const brs = [
+                                { id:'PTN', stock:cw.stock_00??0, cost:cw.cost_00??0, sell:cw.sell_00??0 },
+                                { id:'RAM', stock:cw.stock_01??0, cost:cw.cost_01??0, sell:cw.sell_01??0 },
+                                { id:'CNX', stock:cw.stock_02??0, cost:cw.cost_02??0, sell:cw.sell_02??0 },
+                              ];
+                              return (
+                                <div>
+                                  <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:6, fontWeight:600 }}>
+                                    🏪 {L('ข้อมูล CW Pharma', 'CW Pharma Data')}
+                                    <span style={{ fontSize:10, color:'var(--txt4)', marginLeft:6, fontWeight:400 }}>
+                                      {L('ขายแล้ว', 'Sold')} {(cw.qty_sold||0).toLocaleString()} {L('ชิ้น/ปี', 'pcs/yr')}
+                                    </span>
+                                  </div>
+                                  {cw.name && (
+                                    <div style={{fontSize:11,marginBottom:8,padding:'4px 10px',background:'var(--bg4)',borderRadius:6}}>
+                                      <span style={{color:'var(--txt3)'}}>{L('ชื่อใน CW','CW name')}: </span>
+                                      <span style={{fontWeight:500}}>{cw.name}</span>
+                                      {(window._nameSim||function(){return 1;})(cw.name,d.nameEN||'') < 0.5 && (
+                                        <span style={{marginLeft:6,color:'var(--warn)',fontWeight:700,fontSize:10}}>
+                                          ⚠️ {L('ชื่อต่างจากในระบบ','Name differs from system')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div style={{ display:'flex', gap:8 }}>
+                                    {brs.map(b => (
+                                      <div key={b.id} style={{ background:'var(--bg4)', borderRadius:8, padding:'6px 10px', minWidth:76 }}>
+                                        <div style={{ fontSize:10, fontWeight:700, color:'var(--acc2)', marginBottom:4 }}>{b.id}</div>
+                                        <div style={{ fontSize:11, marginBottom:2 }}>
+                                          {L('คงเหลือ','Stock')}{' '}
+                                          <b style={{ color:b.stock>10?'var(--ok)':b.stock>0?'var(--warn)':'var(--err)' }}>{b.stock}</b>
+                                        </div>
+                                        {b.cost>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ต้นทุน','Cost')} <b>{UTILS.fmt(b.cost)} ฿</b></div>}
+                                        {b.sell>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ราคาขาย','Sell')} <b>{UTILS.fmt(b.sell)} ฿</b></div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             {(() => { const pkg=UTILS.getPackaging(d.unit,'th',d); return pkg ? (
                               <div>
                                 <div style={{ fontSize:11, color:'var(--txt3)', marginBottom:4, fontWeight:600 }}>📦 {L('หน่วยบรรจุ','Packaging')}</div>
@@ -2673,6 +2806,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       )}
       {editDrug && (
         <DrugForm drug={editDrug} lang={lang} L={L} suppliers={suppliers} drugs={drugs} onReuseCode={handleReuseCode}
+          cwName={(cwStock[editDrug.code]||{}).name||''}
           onSave={saveDrug} onClose={() => { setShowAdd(false); setEditDrug(null); }} />
       )}
     </div>

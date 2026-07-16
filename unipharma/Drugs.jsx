@@ -598,6 +598,17 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                                       {L('ขายแล้ว', 'Sold')} {(cw.qty_sold||0).toLocaleString()} {L('ชิ้น/ปี', 'pcs/yr')}
                                     </span>
                                   </div>
+                                  {cw.name && (
+                                    <div style={{fontSize:11,marginBottom:8,padding:'4px 10px',background:'var(--bg4)',borderRadius:6}}>
+                                      <span style={{color:'var(--txt3)'}}>{L('ชื่อใน CW','CW name')}: </span>
+                                      <span style={{fontWeight:500}}>{cw.name}</span>
+                                      {(window._nameSim||function(){return 1;})(cw.name,d.nameEN||'') < 0.5 && (
+                                        <span style={{marginLeft:6,color:'var(--warn)',fontWeight:700,fontSize:10}}>
+                                          ⚠️ {L('ชื่อต่างจากในระบบ','Name differs from system')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                   <div style={{ display:'flex', gap:8 }}>
                                     {brs.map(b => (
                                       <div key={b.id} style={{ background:'var(--bg4)', borderRadius:8, padding:'6px 10px', minWidth:76 }}>
@@ -658,6 +669,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       )}
       {editDrug && (
         <DrugForm drug={editDrug} lang={lang} L={L} suppliers={suppliers} drugs={drugs} onReuseCode={handleReuseCode}
+          cwName={(cwStock[editDrug.code]||{}).name||''}
           onSave={saveDrug} onClose={() => { setShowAdd(false); setEditDrug(null); }} />
       )}
     </div>

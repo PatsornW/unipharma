@@ -525,7 +525,7 @@
       }
       try {
         var res = await client.from('cwpharma_stock_test')
-          .select('code,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
+          .select('code,name,stock_00,stock_01,stock_02,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,qty_sold,synced_at')
           .limit(15000);
         if (res.error) throw res.error;
         var data = res.data || [];
