@@ -97,20 +97,19 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       });
       if (!mismatched.length) return;
 
-      Promise.all(mismatched.map(d => {
-        const updated = { ...d, nameEN: map[d.code].name };
-        return window.UNI_DB.saveDrug(updated).then(() => updated);
-      })).then(updatedList => {
-        setDrugs(prev => prev.map(d => {
-          const u = updatedList.find(u => u.code === d.code);
-          return u || d;
-        }));
+      const updatedList = mismatched.map(d => ({ ...d, nameEN: map[d.code].name }));
+      window.UNI_DB.saveDrugsBulk(updatedList).then(() => {
+        setDrugs(prev => {
+          const byCode = {};
+          updatedList.forEach(u => { byCode[u.code] = u; });
+          return prev.map(d => byCode[d.code] || d);
+        });
         if (notify) notify(
           L('อัปเดตชื่อ EN ' + mismatched.length + ' รายการจาก CW Pharma อัตโนมัติ',
             'Auto-updated ' + mismatched.length + ' English names from CW Pharma'),
           'ok'
         );
-      });
+      }).catch(e => console.warn('[CW auto-sync]', e));
     });
   }, []);
 
