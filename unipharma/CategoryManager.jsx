@@ -27,7 +27,7 @@ function CategoryManagerModal({ lang, L, categories, setCategories, drugs = [], 
         if (window.UNI_DB.deleteCategory) for (const id of removedIds) await window.UNI_DB.deleteCategory(id);
       } catch (e) { console.warn('save categories:', e); }
     }
-    notify(L('บันทึกหมวดหมู่แล้ว ✓', 'Categories saved ✓'), 'success');
+    notify(L('บันทึกหมวดหมู่แล้ว ✓', 'Categories saved ✓'), 'ok');
     onClose();
   };
 

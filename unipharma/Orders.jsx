@@ -19,7 +19,12 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
     let list = [...orders];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(o => o.poNumber?.toLowerCase().includes(q) || UTILS.getSupplier(o.supplierId)?.name?.toLowerCase().includes(q));
+      list = list.filter(o => {
+        const sup = UTILS.getSupplier(o.supplierId);
+        return o.poNumber?.toLowerCase().includes(q)
+          || sup?.name?.toLowerCase().includes(q)
+          || sup?.nameEN?.toLowerCase().includes(q);
+      });
     }
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
     if (statusFilter) list = list.filter(o => o.status === statusFilter);
@@ -70,12 +75,12 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
     const rows = filtered.map(o => ({
       [L('เลข PO', 'PO Number')]: o.poNumber || '',
       [L('สาขา', 'Branch')]: o.branch || '',
-      [L('ผู้จัดหาย', 'Supplier')]: (UTILS.getSupplier(o.supplierId) || {}).name || o.supplierId || '',
+      [L('ผู้จัดจำหน่าย', 'Supplier')]: (UTILS.getSupplier(o.supplierId) || {}).name || o.supplierId || '',
       [L('วันที่สั่ง', 'PO Date')]: o.poDate || '',
       [L('สถานะ', 'Status')]: o.status || '',
       [L('ยอดรวม (฿)', 'Grand Total (฿)')]: o.grandTotal || 0,
       [L('จำนวนรายการ', 'Item Count')]: (o.items || []).length,
-      [L('หมายเหตุ', 'Notes')]: o.notes || '',
+      [L('หมายเหตุ', 'Notes')]: o.memo || '',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{wch:16},{wch:10},{wch:35},{wch:12},{wch:12},{wch:16},{wch:14},{wch:30}];

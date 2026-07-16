@@ -237,7 +237,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     setDealDiscount(discount);
     setShowNewDeal(false);
     setNewDeal({ buyQty:'', freeQty:'', discount:'', bonusItems:'', dealNote:'' });
-    notify(L('เพิ่มดีลแล้ว ✓', 'Deal added ✓'), 'success');
+    notify(L('เพิ่มดีลแล้ว ✓', 'Deal added ✓'), 'ok');
   };
 
   const validate = () => {

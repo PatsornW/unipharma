@@ -549,8 +549,6 @@
     // Returns { code: [{sync_date, cost_00..02, sell_00..02, stock_00..02, qty_sold}] }
     async loadCwPriceHistory(codes) {
       if (!enabled) return {};
-      var client = this._client();
-      if (!client) return {};
       try {
         var cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 1);

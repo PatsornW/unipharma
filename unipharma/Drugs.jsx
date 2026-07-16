@@ -249,7 +249,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       'Stock RAM': (d.stock && d.stock.RAM) || 0,
       'Stock CNX': (d.stock && d.stock.CNX) || 0,
       [L('สต็อกขั้นต่ำ', 'Min Stock')]: d.minStock || 0,
-      [L('ผู้จัดหาย', 'Supplier')]: (() => { const s = suppliers.find(x=>x.id===d.supplierId)||suppliers.find(x=>(x.drugs||[]).includes(d.code)); return s?s.name:(d.supplierId||''); })(),
+      [L('ผู้จัดจำหน่าย', 'Supplier')]: (() => { const s = suppliers.find(x=>x.id===d.supplierId)||suppliers.find(x=>(x.drugs||[]).includes(d.code)); return s?s.name:(d.supplierId||''); })(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{wch:10},{wch:40},{wch:40},{wch:12},{wch:20},{wch:20},{wch:10},{wch:14},{wch:22},{wch:22},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:30}];
@@ -432,7 +432,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
               <option value="novat">{L('ไม่มี VAT', 'No VAT')}</option>
             </select>
           </div>
-          {(search || catFilter || vatFilter !== 'all' || branchFilter) && (
+          {(search || catFilter || subFilter || vatFilter !== 'all' || branchFilter) && (
             <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setBranchFilter(''); setPage(1); }}>
               ✕ {L('ล้างตัวกรอง', 'Clear')}
             </button>

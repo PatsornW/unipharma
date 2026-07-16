@@ -2393,7 +2393,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       'Stock RAM': (d.stock && d.stock.RAM) || 0,
       'Stock CNX': (d.stock && d.stock.CNX) || 0,
       [L('สต็อกขั้นต่ำ', 'Min Stock')]: d.minStock || 0,
-      [L('ผู้จัดหาย', 'Supplier')]: (() => { const s = suppliers.find(x=>x.id===d.supplierId)||suppliers.find(x=>(x.drugs||[]).includes(d.code)); return s?s.name:(d.supplierId||''); })(),
+      [L('ผู้จัดจำหน่าย', 'Supplier')]: (() => { const s = suppliers.find(x=>x.id===d.supplierId)||suppliers.find(x=>(x.drugs||[]).includes(d.code)); return s?s.name:(d.supplierId||''); })(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{wch:10},{wch:40},{wch:40},{wch:12},{wch:20},{wch:20},{wch:10},{wch:14},{wch:22},{wch:22},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:30}];
@@ -2570,7 +2570,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
               <option value="novat">{L('ไม่มี VAT', 'No VAT')}</option>
             </select>
           </div>
-          {(search || catFilter || vatFilter !== 'all' || branchFilter) && (
+          {(search || catFilter || subFilter || vatFilter !== 'all' || branchFilter) && (
             <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setBranchFilter(''); setPage(1); }}>
               ✕ {L('ล้างตัวกรอง', 'Clear')}
             </button>
@@ -2939,7 +2939,12 @@ function OrdersPage({ lang, L, orders, setOrders, drugs, suppliers, notify, setV
     let list = [...orders];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(o => o.poNumber?.toLowerCase().includes(q) || UTILS.getSupplier(o.supplierId)?.name?.toLowerCase().includes(q));
+      list = list.filter(o => {
+        const sup = UTILS.getSupplier(o.supplierId);
+        return o.poNumber?.toLowerCase().includes(q)
+          || sup?.name?.toLowerCase().includes(q)
+          || sup?.nameEN?.toLowerCase().includes(q);
+      });
     }
     if (branchFilter) list = list.filter(o => o.branch === branchFilter);
     if (statusFilter) list = list.filter(o => o.status === statusFilter);
@@ -3369,7 +3374,7 @@ function CreatePOModal({ lang, L, drugs, suppliers, setSuppliers, orders, onClos
     setDealDiscount(discount);
     setShowNewDeal(false);
     setNewDeal({ buyQty:'', freeQty:'', discount:'', bonusItems:'', dealNote:'' });
-    notify(L('เพิ่มดีลแล้ว ✓', 'Deal added ✓'), 'success');
+    notify(L('เพิ่มดีลแล้ว ✓', 'Deal added ✓'), 'ok');
   };
 
   const validate = () => {
@@ -5932,7 +5937,7 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
     const name = (form.productName || '').trim();
 
     if (!code && !name) {
-      notify(L('กรุณาระบุรหัสหรือชื่อสินค้า', 'Please enter product code or name'), 'error');
+      notify(L('กรุณาระบุรหัสหรือชื่อสินค้า', 'Please enter product code or name'), 'err');
       return;
     }
 
@@ -5959,16 +5964,16 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
       if (cloudOn && window.UNI_DB.saveOutOfStock) {
         const ok = await window.UNI_DB.saveOutOfStock(newReport);
         if (!ok) throw new Error('cloud save failed');
-        notify(L('บันทึกและแชร์ให้ทุกคนแล้ว ✓', 'Saved & shared with everyone ✓'), 'success');
+        notify(L('บันทึกและแชร์ให้ทุกคนแล้ว ✓', 'Saved & shared with everyone ✓'), 'ok');
       } else {
         // Offline → persist to this browser only.
         const stored = JSON.parse(localStorage.getItem('uni_out_of_stock') || '[]');
         localStorage.setItem('uni_out_of_stock', JSON.stringify([...stored, newReport]));
-        notify(L('บันทึกแล้ว (เครื่องนี้เท่านั้น)', 'Saved (this device only)'), 'success');
+        notify(L('บันทึกแล้ว (เครื่องนี้เท่านั้น)', 'Saved (this device only)'), 'ok');
       }
     } catch (e) {
       console.error('Save error:', e);
-      notify(L('บันทึกขึ้นคลาวด์ไม่สำเร็จ', 'Could not save to cloud'), 'error');
+      notify(L('บันทึกขึ้นคลาวด์ไม่สำเร็จ', 'Could not save to cloud'), 'err');
       loadReports(); // roll back optimistic add to the true server state
     }
   };
@@ -5987,10 +5992,10 @@ const OutOfStockPage = ({ lang, L, perm, notify, drugs }) => {
         const stored = JSON.parse(localStorage.getItem('uni_out_of_stock') || '[]');
         localStorage.setItem('uni_out_of_stock', JSON.stringify(stored.map(r => r.id === id ? { ...r, ...stamp } : r)));
       }
-      notify(L('ย้ายไปสถิติแล้ว ✓', 'Moved to statistics ✓'), 'success');
+      notify(L('ย้ายไปสถิติแล้ว ✓', 'Moved to statistics ✓'), 'ok');
     } catch (e) {
       console.error('Resolve error:', e);
-      notify(L('ดำเนินการไม่สำเร็จ', 'Could not update'), 'error');
+      notify(L('ดำเนินการไม่สำเร็จ', 'Could not update'), 'err');
       loadReports();
     }
   };
@@ -8307,7 +8312,7 @@ function CategoryManagerModal({ lang, L, categories, setCategories, drugs = [], 
         if (window.UNI_DB.deleteCategory) for (const id of removedIds) await window.UNI_DB.deleteCategory(id);
       } catch (e) { console.warn('save categories:', e); }
     }
-    notify(L('บันทึกหมวดหมู่แล้ว ✓', 'Categories saved ✓'), 'success');
+    notify(L('บันทึกหมวดหมู่แล้ว ✓', 'Categories saved ✓'), 'ok');
     onClose();
   };
 
