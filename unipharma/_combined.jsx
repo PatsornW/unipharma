@@ -5382,6 +5382,7 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
   const [tab, setTab] = useState('current');
   const [cwHistory, setCwHistory] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
+  const [poHistory,  setPoHistory]  = useState([]);
   const chartRef  = useRef(null);
   const chartInst = useRef(null);
 
@@ -5392,6 +5393,13 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
       .then(map => setCwHistory(map[selectedDrug.code] || []))
       .catch(() => setCwHistory([]))
       .finally(() => setHistLoading(false));
+  }, [selectedDrug]);
+
+  useEffect(() => {
+    if (!selectedDrug || !window.UNI_DB?.enabled) { setPoHistory([]); return; }
+    window.UNI_DB.loadPriceHistory(selectedDrug.code)
+      .then(rows => setPoHistory(rows || []))
+      .catch(() => setPoHistory([]));
   }, [selectedDrug]);
 
   useEffect(() => {
@@ -5453,7 +5461,7 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
   }, [drugs, suppliers]);
 
   const selectDrug = d => { setSelectedDrug(d); setSearch(''); setShowSearch(false); setTab('current'); };
-  const clearDrug  = () => { setSelectedDrug(null); setSearch(''); setTab('current'); setCwHistory([]); };
+  const clearDrug  = () => { setSelectedDrug(null); setSearch(''); setTab('current'); setCwHistory([]); setPoHistory([]); };
 
   return (
     <div className="page">
@@ -5813,6 +5821,66 @@ function ComparisonPage({ lang, L, drugs, suppliers }) {
                       </tbody>
                     </table>
                   </div>
+                </div>
+                {/* PO PURCHASE HISTORY */}
+                <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 16 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 13 }}>
+                    🛒 {L('ประวัติการสั่งซื้อจริง (จาก PO)', 'Actual Purchase History (from POs)')}
+                    {poHistory.length > 0 && (
+                      <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--txt3)', marginLeft: 8 }}>({poHistory.length} {L('รายการ', 'entries')})</span>
+                    )}
+                  </div>
+                  {poHistory.length === 0 ? (
+                    <div style={{ padding: '20px 16px', fontSize: 12, color: 'var(--txt3)', textAlign: 'center' }}>
+                      {L('ยังไม่มีประวัติ — จะบันทึกอัตโนมัติเมื่ออนุมัติ PO', 'No history yet — auto-logged when PO is approved')}
+                    </div>
+                  ) : (
+                    <div className="tbl-wrap" style={{ border: 'none' }}>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>{L('วันที่สั่งซื้อ', 'PO Date')}</th>
+                            <th>{L('ผู้แทนฯ', 'Supplier')}</th>
+                            <th style={{ textAlign: 'right' }}>{L('ราคา/หน่วย', 'Unit Price')}</th>
+                            <th>{L('เลข PO', 'PO No.')}</th>
+                            <th style={{ textAlign: 'right' }}>{L('vs CW', 'vs CW')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {poHistory.map((row, i) => {
+                            const sup = suppliers.find(s => s.id === row.supplier_id);
+                            const cwRef = (() => {
+                              if (!cwHistory.length || !row.po_date) return null;
+                              const d = row.po_date.slice(0, 10);
+                              const near = cwHistory.filter(c => c.sync_date <= d && c.cost_00 > 0);
+                              return near.length ? near[near.length - 1].cost_00 : null;
+                            })();
+                            const diff = cwRef && row.cost_ex ? +(row.cost_ex - cwRef).toFixed(2) : null;
+                            return (
+                              <tr key={row.id || i}>
+                                <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--txt2)' }}>{row.po_date ? row.po_date.slice(0, 10) : '—'}</td>
+                                <td style={{ fontWeight: 600, fontSize: 12 }}>{sup ? (lang === 'th' ? sup.name : (sup.nameEN || sup.name)) : row.supplier_id}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                  {row.cost_ex > 0 ? '฿' + UTILS.fmt(row.cost_ex) : '—'}
+                                </td>
+                                <td style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'monospace' }}>{row.po_number || '—'}</td>
+                                <td style={{ textAlign: 'right', fontSize: 12 }}>
+                                  {diff === null
+                                    ? <span style={{ color: 'var(--txt4)' }}>—</span>
+                                    : diff === 0
+                                      ? <span style={{ color: 'var(--txt3)' }}>—</span>
+                                      : diff > 0
+                                        ? <span style={{ color: 'var(--err)', fontWeight: 700 }}>+฿{UTILS.fmt(Math.abs(diff))}</span>
+                                        : <span style={{ color: 'var(--ok)',  fontWeight: 700 }}>-฿{UTILS.fmt(Math.abs(diff))}</span>
+                                  }
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </>
             );
