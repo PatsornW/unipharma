@@ -7,6 +7,7 @@ Run in CI:    xvfb-run --auto-servernum python scripts/cw_sync_cloud.py
 
 import sys, os, time, re, glob, json
 from datetime import date, datetime
+from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 import pandas as pd
 import requests
@@ -34,12 +35,13 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 # ── STEP 1: LOGIN ─────────────────────────────────────────────────────────────
 
 def login(page):
-    print("[1] Logging in...")
-    page.goto(CW_URL.rstrip('/WebBack/').rstrip('/WebBack') + '/', timeout=30000)
+    # Build login URL from CW_URL host only — works regardless of what path CW_URL contains
+    _host = '{0.scheme}://{0.netloc}'.format(urlparse(CW_URL))
+    login_url = _host + '/WebFront/Home/Login.aspx'
+    print(f"[1] Logging in (host: {_host})...")
+    page.goto(login_url, timeout=30000)
     page.wait_for_load_state("networkidle")
     time.sleep(1)
-    print(f"    Login page URL: {page.url}")
-    # show all input IDs on page to verify selectors
     inputs = page.evaluate("Array.from(document.querySelectorAll('input')).map(e=>e.id+':'+e.type)")
     print(f"    Inputs found: {inputs}")
     page.fill("#cTxUserName", CW_USERNAME)
@@ -47,7 +49,6 @@ def login(page):
     page.click("#cBtnLogin")
     page.wait_for_load_state("networkidle")
     time.sleep(2)
-    print(f"    After-login URL: {page.url}")
     page.screenshot(path=os.path.join(DOWNLOAD_DIR, 'after_login.png'))
     if 'Login' in page.url or 'login' in page.url:
         page_text = page.evaluate("document.body.innerText.replace(/\\s+/g,' ').trim().substring(0,400)")
