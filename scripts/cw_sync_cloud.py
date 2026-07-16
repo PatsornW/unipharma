@@ -50,7 +50,9 @@ def login(page):
     print(f"    After-login URL: {page.url}")
     page.screenshot(path=os.path.join(DOWNLOAD_DIR, 'after_login.png'))
     if 'Login' in page.url or 'login' in page.url:
-        raise Exception(f"Login FAILED — still on login page. Check CW_USERNAME / CW_PASSWORD secrets.")
+        page_text = page.evaluate("document.body.innerText.replace(/\\s+/g,' ').trim().substring(0,400)")
+        print(f"    CW page message: {page_text}")
+        raise Exception(f"Login FAILED — still on login page. Check CW_USERNAME/CW_PASSWORD in GitHub Secrets.")
 
 
 # ── STEP 2: DOWNLOAD BRNSTOCK ─────────────────────────────────────────────────
