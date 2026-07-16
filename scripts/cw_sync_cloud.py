@@ -126,7 +126,12 @@ def _download_brnstock_part(page, part_idx):
         return None
 
     page.click('#MainContent_Button3')
-    time.sleep(5)
+    page.wait_for_load_state("networkidle")
+    time.sleep(10)
+
+    page.screenshot(path=os.path.join(DOWNLOAD_DIR, f'brnstock_after_btn3_p{part_idx+1}.png'))
+    all_frames = [f.url for f in page.frames]
+    print(f"    Frames after Button3: {all_frames}")
 
     rep_frame = next((f for f in page.frames if 'BrnStock_Rep' in f.url), None)
     if not rep_frame:
@@ -222,7 +227,13 @@ def _setup_brnsale_page(page):
         " document.querySelector('#MainContent_cChkIsShowDet_Ps').click()"
     )
     page.click('#MainContent_Button3')
-    time.sleep(5)
+    page.wait_for_load_state("networkidle")
+    time.sleep(10)
+
+    page.screenshot(path=os.path.join(DOWNLOAD_DIR, 'brnsale_after_btn3.png'))
+    all_frames = [f.url for f in page.frames]
+    print(f"    BrnSale frames after Button3: {all_frames}")
+
     return next((f for f in page.frames if 'BrnSale_Rep' in f.url), None)
 
 
