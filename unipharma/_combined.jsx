@@ -2199,6 +2199,62 @@ function UnusedDrugsPanel({ lang, L, drugs, onEdit }) {
   );
 }
 
+function CwPriceChart({ history, lang }) {
+  const [branch, setBranch] = React.useState('00');
+  if (!history) return (
+    <div style={{ fontSize:10, color:'var(--txt4)', marginTop:6 }}>
+      ⏳ {lang==='th' ? 'กำลังโหลดประวัติราคา…' : 'Loading price history…'}
+    </div>
+  );
+  if (history.length < 2) return (
+    <div style={{ fontSize:10, color:'var(--txt4)', fontStyle:'italic', marginTop:6 }}>
+      {lang==='th' ? '(ยังไม่มีประวัติ — จะสะสมทีละวันจากนี้)' : '(No history yet — builds up daily from now)'}
+    </div>
+  );
+  const W = 300, H = 72, PX = 6, PY = 10;
+  const ck = 'cost_' + branch, sk = 'sell_' + branch;
+  const vals = history.flatMap(h => [+(h[ck]||0), +(h[sk]||0)]).filter(v => v > 0);
+  if (!vals.length) return null;
+  const minV = Math.min(...vals) * 0.97, maxV = Math.max(...vals) * 1.03, rng = maxV - minV || 1;
+  const n = history.length;
+  const px = i => PX + (i / (n - 1)) * (W - 2 * PX);
+  const py = v => H - PY - ((v - minV) / rng) * (H - 2 * PY);
+  const path = key => history.map((h,i) => (i===0?'M':'L') + px(i).toFixed(1) + ',' + py(+(h[key]||0)).toFixed(1)).join('');
+  const last = history[history.length - 1];
+  const lc = +(last[ck]||0), ls = +(last[sk]||0);
+  const profit = ls - lc;
+  const margin = ls > 0 ? ((profit / ls) * 100).toFixed(1) : '0.0';
+  return (
+    <div style={{ marginTop:8 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
+        <span style={{ fontSize:10, fontWeight:600, color:'var(--txt3)' }}>📈 {lang==='th'?'ประวัติราคา':'Price History'}</span>
+        {['00','01','02'].map(b => (
+          <button key={b} onClick={()=>setBranch(b)} style={{
+            fontSize:9, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)',
+            background: branch===b ? 'var(--acc1)' : 'transparent',
+            color: branch===b ? '#fff' : 'var(--txt3)', cursor:'pointer' }}>
+            {b==='00'?'PTN':b==='01'?'RAM':'CNX'}
+          </button>
+        ))}
+        <span style={{ fontSize:9, color:'var(--txt4)', marginLeft:'auto' }}>
+          {history[0].sync_date.slice(5)} – {last.sync_date.slice(5)} ({n} {lang==='th'?'จุด':'pts'})
+        </span>
+      </div>
+      <svg width={W} height={H} style={{ display:'block', border:'1px solid var(--border)', borderRadius:4 }}>
+        <path d={path(ck)} fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+        <path d={path(sk)} fill="none" stroke="#22c55e" strokeWidth="1.5" />
+        <circle cx={px(n-1)} cy={py(lc)} r="2.5" fill="#3b82f6" />
+        <circle cx={px(n-1)} cy={py(ls)} r="2.5" fill="#22c55e" />
+      </svg>
+      <div style={{ display:'flex', gap:10, fontSize:10, color:'var(--txt4)', marginTop:2 }}>
+        <span><span style={{color:'#3b82f6'}}>●</span> {lang==='th'?'ต้นทุน':'Cost'} {lc?UTILS.fmt(lc)+' ฿':'-'}</span>
+        <span><span style={{color:'#22c55e'}}>●</span> {lang==='th'?'ราคาขาย':'Sell'} {ls?UTILS.fmt(ls)+' ฿':'-'}</span>
+        {profit > 0 && <span style={{color:'var(--ok)'}}>กำไร {UTILS.fmt(profit)} ฿ ({margin}%)</span>}
+      </div>
+    </div>
+  );
+}
+
 function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategories, notify, perm = { canWrite: true } }) {
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
@@ -2216,6 +2272,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [cwStock, setCwStock] = useState({});
   const [cwSyncedAt, setCwSyncedAt] = useState(null);
+  const [cwHistory, setCwHistory] = useState({});
   const cwAutoSynced = React.useRef(false);
 
   const cats = categories || DB.CATEGORIES;
@@ -2255,6 +2312,24 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       }).catch(e => console.warn('[CW auto-sync]', e));
     });
   }, []);
+
+  // Load CW price history for the expanded drug (lazy, per-code, cached in cwHistory state)
+  useEffect(() => {
+    if (!expandedCode) return;
+    if (cwHistory[expandedCode] !== undefined) return; // already loaded
+    if (!window.UNI_DB || !window.UNI_DB.loadCwPriceHistory) return;
+    // null = loading; array = loaded
+    setCwHistory(prev => Object.assign({}, prev, { [expandedCode]: null }));
+    window.UNI_DB.loadCwPriceHistory([expandedCode])
+      .then(data => {
+        const arr = (data || {})[expandedCode] || [];
+        setCwHistory(prev => Object.assign({}, prev, { [expandedCode]: arr }));
+      })
+      .catch(e => {
+        console.warn('[CW hist]', e);
+        setCwHistory(prev => Object.assign({}, prev, { [expandedCode]: [] }));
+      });
+  }, [expandedCode]);
 
   // Count items available per branch (stock > 0)
   const branchCounts = useMemo(() => {
@@ -2781,9 +2856,11 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                                         </div>
                                         {b.cost>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ต้นทุน','Cost')} <b>{UTILS.fmt(b.cost)} ฿</b></div>}
                                         {b.sell>0 && <div style={{ fontSize:11, color:'var(--txt3)' }}>{L('ราคาขาย','Sell')} <b>{UTILS.fmt(b.sell)} ฿</b></div>}
+                                        {b.sell>0 && b.cost>0 && <div style={{ fontSize:10, color:'var(--ok)' }}>{L('กำไร','Profit')} <b>{UTILS.fmt(b.sell-b.cost)} ฿</b></div>}
                                       </div>
                                     ))}
                                   </div>
+                                  <CwPriceChart history={cwHistory[d.code]} lang={lang} />
                                 </div>
                               );
                             })()}

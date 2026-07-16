@@ -6,7 +6,7 @@ Run in CI:    xvfb-run --auto-servernum python scripts/cw_sync_cloud.py
 """
 
 import sys, os, time, re, glob, json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 import pandas as pd
@@ -21,9 +21,11 @@ DOWNLOAD_DIR = os.environ.get('DOWNLOAD_DIR', '/tmp/cw_sync')
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://wddepvcmfqykidgbgnut.supabase.co')
 SUPABASE_KEY = os.environ['SUPABASE_KEY']
-TABLE        = 'cwpharma_stock_test'
+TABLE         = 'cwpharma_stock_test'
+HISTORY_TABLE = 'cw_price_history'
 
-SALE_FROM        = f"01/01/{date.today().year}"
+# 12-month lookback gives more representative avg cost/sell prices than YTD
+SALE_FROM        = (date.today() - timedelta(days=365)).strftime("%d/%m/%Y")
 SALE_TO          = date.today().strftime("%d/%m/%Y")
 EXPORT_BTN       = '#ctl00_MainContent_ReportViewer1_ctl05_ctl04_ctl00_ButtonLink'
 STOCK_PARTS      = 2
@@ -279,10 +281,14 @@ def parse_stock(files):
                     and pd.notna(prod) and 'P-' in str(prod)):
                 raw = str(prod).strip()
                 code, name = raw.split(':', 1) if ':' in raw else (raw, raw)
+                name = name.strip()
+                if '*' in name:   # controlled drug (ยาควบคุม) — skip product + sub-rows
+                    current = None
+                    continue
                 current = code.strip()
                 if current not in products:
                     products[current] = {
-                        'code': current, 'name': name.strip(),
+                        'code': current, 'name': name,
                         'unit': str(unit).strip() if pd.notna(unit) else '',
                         'stock_total': int(float(stock)) if pd.notna(stock) and str(stock) != 'nan' else 0,
                         'stock_00': 0, 'stock_01': 0, 'stock_02': 0,
@@ -378,6 +384,44 @@ def upload_to_supabase(products, batch=500):
     print(f'[Upload] {ok}/{total} rows synced to {TABLE}')
 
 
+def upload_price_history(products, batch=500):
+    """Save a daily snapshot to cw_price_history (one row per code per day).
+    Uses resolution=ignore-duplicates so two syncs on the same day keep the first."""
+    today = date.today().isoformat()
+    rows = []
+    for p in products.values():
+        rows.append({
+            'code':     p['code'],
+            'sync_date': today,
+            'stock_00': p.get('stock_00', 0),
+            'stock_01': p.get('stock_01', 0),
+            'stock_02': p.get('stock_02', 0),
+            'cost_00':  p.get('cost_00', 0.0),
+            'cost_01':  p.get('cost_01', 0.0),
+            'cost_02':  p.get('cost_02', 0.0),
+            'sell_00':  p.get('sell_00', 0.0),
+            'sell_01':  p.get('sell_01', 0.0),
+            'sell_02':  p.get('sell_02', 0.0),
+            'qty_sold': p.get('qty_sold', 0),
+        })
+    headers = {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': f'Bearer {SUPABASE_KEY}',
+        'Content-Type':  'application/json',
+        'Prefer':        'resolution=ignore-duplicates',  # first sync of the day wins
+    }
+    url   = f'{SUPABASE_URL}/rest/v1/{HISTORY_TABLE}'
+    total, ok = len(rows), 0
+    for i in range(0, total, batch):
+        chunk = rows[i:i + batch]
+        res   = requests.post(url, headers=headers, data=json.dumps(chunk))
+        if res.status_code in (200, 201):
+            ok += len(chunk)
+        else:
+            print(f'  [History] ERROR batch {i}: {res.status_code} {res.text[:200]}')
+    print(f'[History] {ok}/{total} rows saved to {HISTORY_TABLE} ({today})')
+
+
 def sync_supabase():
     print("\n[4] Parsing Excel files...")
     stock_files = sorted(glob.glob(os.path.join(DOWNLOAD_DIR, 'stock_part*.xlsx')))
@@ -402,6 +446,7 @@ def sync_supabase():
 
     print("\n[5] Uploading to Supabase...")
     upload_to_supabase(products)
+    upload_price_history(products)
 
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────

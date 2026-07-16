@@ -545,6 +545,41 @@
       }
     },
 
+    // Load price history for given codes from cw_price_history (last 12 months).
+    // Returns { code: [{sync_date, cost_00..02, sell_00..02, stock_00..02, qty_sold}] }
+    async loadCwPriceHistory(codes) {
+      if (!enabled) return {};
+      var client = this._client();
+      if (!client) return {};
+      try {
+        var cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 1);
+        var cutoffStr = cutoff.toISOString().split('T')[0];
+        var all = {}, from = 0, PAGE = 1000;
+        while (true) {
+          var q = client.from('cw_price_history')
+            .select('code,sync_date,cost_00,cost_01,cost_02,sell_00,sell_01,sell_02,stock_00,stock_01,stock_02,qty_sold')
+            .gte('sync_date', cutoffStr)
+            .order('sync_date', { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (codes && codes.length) q = q.in('code', codes);
+          var res = await q;
+          if (res.error) throw res.error;
+          var chunk = res.data || [];
+          chunk.forEach(function(r) {
+            if (!all[r.code]) all[r.code] = [];
+            all[r.code].push(r);
+          });
+          if (chunk.length < PAGE) break;
+          from += PAGE;
+        }
+        return all;
+      } catch(e) {
+        console.warn('[UNI_DB] loadCwPriceHistory:', e && (e.message || String(e)));
+        return {};
+      }
+    },
+
     // Realtime disabled — was generating 15 GB/month egress on free tier (random channel
     // names created a new channel per page load, never reused). Data stays fresh via cache
     // TTLs + explicit reload after save. Re-enable if plan is upgraded to Pro.
