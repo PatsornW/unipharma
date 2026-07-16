@@ -319,7 +319,10 @@
 
     async saveDrug(d) {
       if (!enabled) return;
-      try { await client.from("drugs").upsert(drugRow(d)); }
+      try {
+        await client.from("drugs").upsert(drugRow(d));
+        try { localStorage.removeItem('uni_drug_idb_ts'); localStorage.removeItem('uni_drug_count'); } catch(_) {}
+      }
       catch (e) { console.warn("[UNI_DB] saveDrug:", e); }
     },
     async saveSupplier(s) {
