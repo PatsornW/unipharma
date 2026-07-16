@@ -38,12 +38,19 @@ def login(page):
     page.goto(CW_URL.rstrip('/WebBack/').rstrip('/WebBack') + '/', timeout=30000)
     page.wait_for_load_state("networkidle")
     time.sleep(1)
+    print(f"    Login page URL: {page.url}")
+    # show all input IDs on page to verify selectors
+    inputs = page.evaluate("Array.from(document.querySelectorAll('input')).map(e=>e.id+':'+e.type)")
+    print(f"    Inputs found: {inputs}")
     page.fill("#cTxUserName", CW_USERNAME)
     page.fill("#cTxPassword", CW_PASSWORD)
     page.click("#cBtnLogin")
     page.wait_for_load_state("networkidle")
     time.sleep(2)
-    print(f"    URL: {page.url}")
+    print(f"    After-login URL: {page.url}")
+    page.screenshot(path=os.path.join(DOWNLOAD_DIR, 'after_login.png'))
+    if 'Login' in page.url or 'login' in page.url:
+        raise Exception(f"Login FAILED — still on login page. Check CW_USERNAME / CW_PASSWORD secrets.")
 
 
 # ── STEP 2: DOWNLOAD BRNSTOCK ─────────────────────────────────────────────────
