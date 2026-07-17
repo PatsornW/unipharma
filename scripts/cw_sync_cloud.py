@@ -19,7 +19,14 @@ CW_USERNAME  = os.environ['CW_USERNAME']
 CW_PASSWORD  = os.environ['CW_PASSWORD']
 DOWNLOAD_DIR = os.environ.get('DOWNLOAD_DIR', '/tmp/cw_sync')
 
-# Optional secondary CW instance for CNX branch (branch index '02')
+# Optional RAM branch CW (branch index '01') — GR report only (stock/sales come from main CW)
+# Set CW_URL_RAM in GitHub Secrets to pull last-received cost for RAM branch
+CW_URL_RAM      = os.environ.get('CW_URL_RAM', '')
+CW_USERNAME_RAM = os.environ.get('CW_USERNAME_RAM', os.environ.get('CW_USERNAME', ''))
+CW_PASSWORD_RAM = os.environ.get('CW_PASSWORD_RAM', os.environ.get('CW_PASSWORD', ''))
+DOWNLOAD_DIR_RAM = os.path.join(os.environ.get('DOWNLOAD_DIR', '/tmp/cw_sync'), 'ram')
+
+# Optional CNX branch CW (branch index '02')
 # Set CW_URL_CNX in GitHub Secrets to enable CNX-specific price sync
 CW_URL_CNX      = os.environ.get('CW_URL_CNX', '')
 CW_USERNAME_CNX = os.environ.get('CW_USERNAME_CNX', os.environ.get('CW_USERNAME', ''))
@@ -185,9 +192,10 @@ def _download_ssrs_excel_any(page, label, dl_dir=None):
         return None
 
 
-def download_gr_report(page, cw_url=None, dl_dir=None):
+def download_gr_report(page, cw_url=None, dl_dir=None, label='gr'):
     """
     Download รายงานการรับ-คืนสินค้า from CW WebFront (Supplier_Man.aspx).
+    label: 'gr_ptn' / 'gr_ram' / 'gr_cnx' — used for file naming.
     Returns list of downloaded .xlsx paths.
     """
     _url = cw_url or CW_URL
@@ -195,16 +203,16 @@ def download_gr_report(page, cw_url=None, dl_dir=None):
     _host = '{0.scheme}://{0.netloc}'.format(urlparse(_url))
     gr_url = _host + '/WebFront/Reports/Supplier_Man.aspx'
 
-    print(f'\n[GR] → {gr_url}')
+    print(f'\n[GR:{label}] → {gr_url}')
     try:
         page.goto(gr_url, timeout=60000)
         page.wait_for_load_state('networkidle')
         time.sleep(3)
     except Exception as e:
-        print(f'[GR] Navigation error: {e}')
+        print(f'[GR:{label}] Navigation error: {e}')
         return []
 
-    page.screenshot(path=os.path.join(_dir, 'gr_01_loaded.png'))
+    page.screenshot(path=os.path.join(_dir, f'{label}_01_loaded.png'))
 
     # Select "รายการรับ" radio (receive only, not returns)
     page.evaluate("""() => {
@@ -240,15 +248,15 @@ def download_gr_report(page, cw_url=None, dl_dir=None):
         new_page = page_info.value
         new_page.wait_for_load_state('networkidle')
         time.sleep(10)
-        print('[GR] Report opened in popup')
+        print(f'[GR:{label}] Report opened in popup')
     except Exception:
         time.sleep(10)
-        print('[GR] No popup — checking inline SSRS frame')
+        print(f'[GR:{label}] No popup — checking inline SSRS frame')
 
     target = new_page if new_page else page
-    target.screenshot(path=os.path.join(_dir, 'gr_02_report.png'))
+    target.screenshot(path=os.path.join(_dir, f'{label}_02_report.png'))
 
-    f = _download_ssrs_excel_any(target, 'gr_report', _dir)
+    f = _download_ssrs_excel_any(target, label, _dir)
     if new_page:
         try:
             new_page.close()
@@ -333,18 +341,19 @@ def parse_gr_report(files):
     return result
 
 
-def _apply_gr_costs(products, gr_costs):
-    """Override branch costs with GR last-received cost for all matching products."""
+def _apply_gr_costs(products, gr_costs, branch):
+    """
+    Override cost for a specific branch with GR last-received cost.
+    branch: '00' (PTN) | '01' (RAM) | '02' (CNX)
+    """
+    key = f'cost_{branch}'
     applied = 0
     for code, gr in gr_costs.items():
         if code not in products or gr['cost'] <= 0:
             continue
-        p = products[code]
-        p['cost_00'] = gr['cost']
-        p['cost_01'] = gr['cost']
-        p['cost_02'] = gr['cost']
+        products[code][key] = gr['cost']
         applied += 1
-    print(f'[GR] Applied last-received cost to {applied} / {len(products)} products')
+    print(f'[GR] cost_{branch}: applied to {applied} / {len(products)} products')
     return products
 
 
@@ -751,6 +760,8 @@ if __name__ == "__main__":
     print("=== CW Pharma Auto Sync (Cloud) ===")
     print(f"Download folder : {DOWNLOAD_DIR}")
     print(f"Date range      : {SALE_FROM} – {SALE_TO}")
+    if CW_URL_RAM:
+        print(f"RAM branch URL  : {CW_URL_RAM}")
     if CW_URL_CNX:
         print(f"CNX branch URL  : {CW_URL_CNX}")
         os.makedirs(DOWNLOAD_DIR_CNX, exist_ok=True)
@@ -776,15 +787,34 @@ if __name__ == "__main__":
 
             products = sync_supabase()
 
-            # ── GR last-received cost (ทุนรับหลังสุด) ──────────────────────────
-            print("\n[4b] Downloading GR report (ทุนรับหลังสุด)...")
-            gr_files = download_gr_report(page)
-            if gr_files:
-                gr_costs = parse_gr_report(gr_files)
-                if gr_costs and products:
-                    products = _apply_gr_costs(products, gr_costs)
+            # ── GR ทุนรับหลังสุด — PTN branch (cost_00) from primary CW ──────────
+            print("\n[4b] GR report — PTN (cost_00)...")
+            ptn_gr = download_gr_report(page, CW_URL, DOWNLOAD_DIR, 'gr_ptn')
+            if ptn_gr and products:
+                products = _apply_gr_costs(products, parse_gr_report(ptn_gr), '00')
             else:
-                print('[GR] No GR report downloaded — skipping last-received cost')
+                print('[GR] PTN GR skipped')
+
+            # ── GR ทุนรับหลังสุด — RAM branch (cost_01) ─────────────────────────
+            if CW_URL_RAM and products:
+                print(f"\n[4c] GR report — RAM (cost_01)...")
+                os.makedirs(DOWNLOAD_DIR_RAM, exist_ok=True)
+                page_ram = ctx.new_page()
+                try:
+                    login(page_ram, cw_url=CW_URL_RAM,
+                          username=CW_USERNAME_RAM, password=CW_PASSWORD_RAM,
+                          dl_dir=DOWNLOAD_DIR_RAM)
+                    ram_gr = download_gr_report(page_ram, CW_URL_RAM, DOWNLOAD_DIR_RAM, 'gr_ram')
+                    if ram_gr:
+                        products = _apply_gr_costs(products, parse_gr_report(ram_gr), '01')
+                except Exception as e:
+                    import traceback
+                    print(f"\nRAM GR ERROR (non-fatal): {e}")
+                    traceback.print_exc()
+                finally:
+                    page_ram.close()
+            else:
+                print('[GR] CW_URL_RAM not set — RAM GR skipped')
 
             # ── Optional CNX sync (separate CW instance) ──
             if CW_URL_CNX and products:
@@ -797,6 +827,10 @@ if __name__ == "__main__":
                     cnx_stock = download_brnstock(page_cnx, cw_url=CW_URL_CNX, dl_dir=DOWNLOAD_DIR_CNX)
                     cnx_sale  = download_brnsale(page_cnx,  cw_url=CW_URL_CNX, dl_dir=DOWNLOAD_DIR_CNX)
                     products  = merge_cnx_into_products(products, cnx_stock, cnx_sale)
+                    # GR ทุนรับหลังสุด — CNX branch (cost_02)
+                    cnx_gr = download_gr_report(page_cnx, CW_URL_CNX, DOWNLOAD_DIR_CNX, 'gr_cnx')
+                    if cnx_gr:
+                        products = _apply_gr_costs(products, parse_gr_report(cnx_gr), '02')
                 except Exception as e:
                     import traceback
                     print(f"\nCNX sync ERROR (non-fatal): {e}")
