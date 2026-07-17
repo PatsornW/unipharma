@@ -2327,6 +2327,17 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
   const cats = categories || DB.CATEGORIES;
   const selectedCat = cats.find(c => c.id === catFilter);
 
+  const refreshCw = async () => {
+    if (!window.UNI_DB || !window.UNI_DB.enabled) return;
+    try { localStorage.removeItem('uni_cw_idb_ts'); } catch(e) {}
+    const data = await window.UNI_DB.loadCwStock().catch(() => null);
+    if (!data || !data.length) return;
+    const map = {};
+    data.forEach(r => { map[r.code] = r; });
+    setCwStock(map);
+    setCwSyncedAt(data[0].synced_at);
+  };
+
   useEffect(() => {
     if (!window.UNI_DB || !window.UNI_DB.enabled) return;
     (async () => {
@@ -2520,9 +2531,14 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       <div className="page-header">
         <div>
           <div className="page-title">{L('ฐานข้อมูลยา', 'Drug Database')}</div>
-          <div className="page-subtitle">
-            {L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('จาก', 'of')} {drugs.length.toLocaleString()} {L('รายการ', 'items')}
-            {branchFilter && ` · ${lang === 'th' ? (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).name : (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).nameEN}`}
+          <div className="page-subtitle" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span>{L('แสดง', 'Showing')} {filtered.length.toLocaleString()} {L('จาก', 'of')} {drugs.length.toLocaleString()} {L('รายการ', 'items')}
+            {branchFilter && ` · ${lang === 'th' ? (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).name : (DB.BRANCHES.find(b=>b.id===branchFilter)||{}).nameEN}`}</span>
+            {cwSyncedAt && (
+              <span onClick={refreshCw} title={L('คลิกเพื่อรีเฟรชข้อมูล CW ล่าสุด','Click to refresh CW data')} style={{ fontSize:11, background:'var(--ok-bg)', color:'var(--ok)', borderRadius:99, padding:'1px 9px', fontWeight:500, cursor:'pointer' }}>
+                ⟳ CW {new Date(cwSyncedAt).toLocaleString('th-TH', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
