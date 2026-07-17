@@ -287,13 +287,25 @@ def download_brnsale(page, cw_url=None, dl_dir=None):
 
 # ── STEP 4: PARSE EXCEL ───────────────────────────────────────────────────────
 
+def _try_float(val):
+    """Parse a cell as float; return 0.0 if blank/non-numeric."""
+    try:
+        if pd.isna(val): return 0.0
+        s = str(val).strip().replace(',', '')
+        return float(s) if s and s != 'nan' else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def parse_stock(files):
     products = {}
+    _diag_printed = False  # print first-row column layout once per run for debugging
     for path in files:
         df = pd.read_excel(path, header=None, dtype=str)
         current = None
         for _, row in df.iterrows():
             seq, prod, branch, unit, stock = row[0], row[1], row[2], row[6], row[7]
+
             if (pd.notna(seq) and str(seq).strip().isdigit()
                     and pd.notna(prod) and 'P-' in str(prod)):
                 raw = str(prod).strip()
@@ -303,15 +315,30 @@ def parse_stock(files):
                     current = None
                     continue
                 current = code.strip()
+
+                # cols 3–5 sit between branch(2) and unit(6): try col3=last_cost, col4=last_sell
+                last_cost = _try_float(row[3]) if len(row) > 3 else 0.0
+                last_sell = _try_float(row[4]) if len(row) > 4 else 0.0
+
+                if not _diag_printed:
+                    ncols = len(row)
+                    print(f'[Stock diag] ncols={ncols} | '
+                          + ' | '.join(f'col{i}={str(row[i])[:30]}' for i in range(min(ncols, 10))))
+                    _diag_printed = True
+
                 if current not in products:
+                    # Pre-fill cost/sell from last received cost; parse_sales will override
+                    # per-branch where sales history exists (more accurate average).
                     products[current] = {
                         'code': current, 'name': name,
                         'unit': str(unit).strip() if pd.notna(unit) else '',
                         'stock_total': int(float(stock)) if pd.notna(stock) and str(stock) != 'nan' else 0,
                         'stock_00': 0, 'stock_01': 0, 'stock_02': 0,
-                        'cost_00': 0.0, 'cost_01': 0.0, 'cost_02': 0.0,
-                        'sell_00': 0.0, 'sell_01': 0.0, 'sell_02': 0.0,
+                        'cost_00': last_cost, 'cost_01': last_cost, 'cost_02': last_cost,
+                        'sell_00': last_sell, 'sell_01': last_sell, 'sell_02': last_sell,
                         'qty_sold': 0,
+                        'last_cost': last_cost,
+                        'last_sell': last_sell,
                     }
             elif current and pd.notna(branch):
                 b     = str(branch).strip()
@@ -412,6 +439,8 @@ def upload_to_supabase(products, batch=500):
     for r in rows:
         r['synced_at'] = now
         r.pop('stock_total', None)
+        r.pop('last_cost', None)   # internal field — already pre-filled into cost_XX
+        r.pop('last_sell', None)   # internal field — already pre-filled into sell_XX
     headers = {
         'apikey':        SUPABASE_KEY,
         'Authorization': f'Bearer {SUPABASE_KEY}',
