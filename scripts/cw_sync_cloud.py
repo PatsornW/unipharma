@@ -38,8 +38,8 @@ SUPABASE_KEY = os.environ['SUPABASE_KEY']
 TABLE         = 'cwpharma_stock_test'
 HISTORY_TABLE = 'cw_price_history'
 
-# 12-month lookback gives more representative avg cost/sell prices than YTD
-SALE_FROM        = (date.today() - timedelta(days=365)).strftime("%d/%m/%Y")
+# Fixed fiscal start date — pull all data from 19/07/2025 to today
+SALE_FROM        = '19/07/2025'
 SALE_TO          = date.today().strftime("%d/%m/%Y")
 EXPORT_BTN       = '#ctl00_MainContent_ReportViewer1_ctl05_ctl04_ctl00_ButtonLink'
 STOCK_PARTS      = 2
