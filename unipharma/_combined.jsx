@@ -4874,7 +4874,7 @@ function DealEditorModal({ lang, L, drugs, supId, supDrugs=[], initialDrugCode, 
 function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSave, onClose }) {
   const isEdit = !!sup;
   const [form, setForm] = useState(() => {
-    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', addressEN:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[] };
+    if (!sup) return { id:'SUP'+Date.now(), code:'', name:'', nameEN:'', contact:'', phone:'', email:'', taxId:'', creditTerm:30, deliveryDays:3, rating:4.0, minOrder:5000, address:'', addressEN:'', city:'', province:'', postalCode:'', country:'Thailand', creditLimit:0, notes:'', promotions:[], drugs:[], drugPrices:{}, contacts:[{name:'',phone:''}], returnPolicy:'', returnPolicyEN:'', reps:[] };
     const existingContacts = (sup.contacts||[]).filter(c=>c.name||c.phone);
     const migrateRepDrugs = ds => (ds||[]).map(d => typeof d === 'string' ? {code:d, buyQty:0, freeQty:0, discount:0, note:'', returnPolicy:'', returnPolicyEN:''} : {...d, returnPolicyEN: d.returnPolicyEN||''});
     return { ...sup, addressEN: sup.addressEN||'', contacts: existingContacts.length ? existingContacts : (sup.contact ? [{name:sup.contact,phone:sup.phone||''}] : [{name:'',phone:''}]), returnPolicy: sup.returnPolicy||'', returnPolicyEN: sup.returnPolicyEN||'', reps: (sup.reps||[]).map(r=>({...r, drugs:migrateRepDrugs(r.drugs)})) };
@@ -4961,9 +4961,9 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
       )).slice(0, 12)
     : [];
 
-  const inp = (k, lbl, type = 'text') => (
+  const inp = (k, th, en, type = 'text') => (
     <div className="form-group">
-      <label className="label">{lbl}</label>
+      <label className="label">{th}<span style={{color:'var(--txt3)',fontWeight:400,fontSize:'0.88em'}}> · {en}</span></label>
       <input className="input" type={type} value={form[k] || ''} onChange={e => set(k, type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)} />
     </div>
   );
@@ -4978,18 +4978,18 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
       <div className="modal" style={{ maxWidth:760, width:'95vw' }}>
         <div className="modal-header">
           <div className="modal-title">
-            {isEdit ? L('แก้ไขผู้จัดจำหน่าย','Edit Supplier') : L('เพิ่มผู้จัดจำหน่าย','Add Supplier')}
+            {isEdit ? 'แก้ไขผู้จัดจำหน่าย · Edit Supplier' : 'เพิ่มผู้จัดจำหน่าย · Add Supplier'}
           </div>
           <button className="btn-icon" onClick={onClose} style={{ border:'none', fontSize:18 }}>✕</button>
         </div>
         <div className="modal-body" style={{ overflowY:'auto', maxHeight:'76vh' }}>
       <div className="form-row">
-        {inp('name', L('ชื่อบริษัท (ไทย)', 'Thai Name'))}
-        {inp('nameEN', L('ชื่อบริษัท (อังกฤษ)', 'English Name'))}
+        {inp('name', 'ชื่อบริษัท / ซัพพลายเออร์', 'Company / Supplier name')}
+        {inp('nameEN', 'ชื่อบริษัท (อังกฤษ)', 'English name')}
       </div>
       <div style={{ marginBottom:12 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-          <label className="label" style={{ margin:0 }}>👤 {L('ผู้ติดต่อ / โทรศัพท์', 'Contact / Phone')}</label>
+          <label className="label" style={{ margin:0 }}>👤 ผู้ติดต่อ / โทรศัพท์ · Contact / Phone</label>
           <button type="button" className="btn btn-ghost" style={{ padding:'4px 10px', fontSize:12 }} onClick={addContact}>
             + {L('เพิ่มผู้ติดต่อ', 'Add Contact')}
           </button>
@@ -4997,11 +4997,11 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
         {(form.contacts||[{name:'',phone:''}]).map((c,i) => (
           <div key={i} className="form-row" style={{ marginBottom:6, alignItems:'center' }}>
             <div className="form-group" style={{ margin:0 }}>
-              <input className="input" placeholder={L(`ผู้ติดต่อ ${i+1}`,`Contact ${i+1}`)}
+              <input className="input" placeholder={`ผู้ติดต่อ ${i+1} · Contact ${i+1}`}
                 value={c.name||''} onChange={e=>setContact(i,'name',e.target.value)} />
             </div>
             <div className="form-group" style={{ margin:0 }}>
-              <input className="input" placeholder={L(`เบอร์โทร ${i+1}`,`Phone ${i+1}`)}
+              <input className="input" placeholder={`เบอร์โทร ${i+1} · Phone ${i+1}`}
                 value={c.phone||''} onChange={e=>setContact(i,'phone',e.target.value)} />
             </div>
             {(form.contacts||[]).length > 1 && (
@@ -5012,29 +5012,56 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
         ))}
       </div>
       <div className="form-row">
-        {inp('email', 'Email', 'email')}
-        {inp('taxId', L('เลขภาษี', 'Tax ID'))}
+        {inp('email', 'อีเมล', 'Email', 'email')}
+        {inp('taxId', 'เลขประจำตัวผู้เสียภาษี', 'Tax ID')}
       </div>
       <div className="form-row">
-        {inp('address', L('ที่อยู่ (ไทย)', 'Address (TH)'))}
-        {inp('addressEN', L('ที่อยู่ (อังกฤษ)', 'Address (EN)'))}
+        {inp('address', 'ที่อยู่', 'Street address')}
+        {inp('addressEN', 'ที่อยู่ (อังกฤษ)', 'Address (EN)')}
+      </div>
+      <div className="form-row">
+        {inp('city', 'เมือง / อำเภอ', 'City / District')}
+        {inp('province', 'จังหวัด', 'Province')}
+      </div>
+      <div className="form-row">
+        {inp('postalCode', 'รหัสไปรษณีย์', 'Postal code')}
+        <div className="form-group">
+          <label className="label">ประเทศ<span style={{color:'var(--txt3)',fontWeight:400,fontSize:'0.88em'}}> · Country</span></label>
+          <select className="input" value={form.country||'Thailand'} onChange={e=>set('country',e.target.value)}>
+            <option value="Thailand">Thailand / ไทย</option>
+            <option value="Myanmar">Myanmar / เมียนมา</option>
+            <option value="Laos">Laos / ลาว</option>
+            <option value="Cambodia">Cambodia / กัมพูชา</option>
+            <option value="Vietnam">Vietnam / เวียดนาม</option>
+            <option value="Singapore">Singapore / สิงคโปร์</option>
+            <option value="Other">Other / อื่นๆ</option>
+          </select>
+        </div>
       </div>
       <div className="form-row-3">
-        {inp('creditTerm', L('เครดิต (วัน)', 'Credit Term'), 'number')}
-        {inp('deliveryDays', L('ระยะส่ง (วัน)', 'Delivery Days'), 'number')}
-        {inp('rating', L('คะแนน', 'Rating'), 'number')}
+        {inp('creditTerm', 'เงื่อนไขการชำระเงิน (วัน)', 'Payment terms (days)', 'number')}
+        {inp('creditLimit', 'วงเงินเครดิต (฿)', 'Credit limit (฿)', 'number')}
+        {inp('deliveryDays', 'ระยะส่ง (วัน)', 'Lead time (days)', 'number')}
       </div>
-      {inp('minOrder', L('ขั้นต่ำ (บาท)', 'Min Order (THB)'), 'number')}
+      <div className="form-row">
+        {inp('rating', 'คะแนน', 'Rating', 'number')}
+        {inp('minOrder', 'ขั้นต่ำ (บาท)', 'Min order (฿)', 'number')}
+      </div>
+      <div className="form-group">
+        <label className="label">หมายเหตุ<span style={{color:'var(--txt3)',fontWeight:400,fontSize:'0.88em'}}> · Notes</span></label>
+        <textarea className="input" rows={3} style={{resize:'vertical'}} value={form.notes||''} onChange={e=>set('notes',e.target.value)}
+          placeholder="เงื่อนไขพิเศษ วันเวลาจัดส่ง หรือข้อตกลงอื่นๆ · Special conditions, delivery schedule, or other agreements" />
+      </div>
 
       <div className="divider" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <label className="label" style={{ margin: 0 }}>🎁 {L('โปรโมชั่น / ดีล', 'Promotions / Deals')}</label>
+        <label className="label" style={{ margin: 0 }}>🎁 โปรโมชั่น / ดีล · Promotions / Deals</label>
         <button type="button" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={addPromo}>
           + {L('เพิ่มดีล', 'Add Deal')}
         </button>
       </div>
       {promos.length === 0 && (
-        <div style={{ fontSize: 12, color: 'var(--txt4)', marginBottom: 8 }}>{L('ยังไม่มีดีล — กด + เพิ่มดีล', 'No deals yet — click + Add Deal')}</div>
+        <div style={{ fontSize: 12, color: 'var(--txt4)', marginBottom: 8 }}>ยังไม่มีดีล — กด + เพิ่มดีล · No deals yet — click + Add Deal</div>
       )}
       {promos.map((p, idx) => (
         <div key={p.id}
@@ -5083,13 +5110,13 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
       <div className="divider" />
       <div className="form-row">
         <div className="form-group">
-          <label className="label">↩ {L('นโยบายการรับคืนสินค้า (ไทย)','Return Policy (TH)')}</label>
+          <label className="label">↩ นโยบายการรับคืนสินค้า (ไทย)<span style={{color:'var(--txt3)',fontWeight:400,fontSize:'0.88em'}}> · Return Policy (TH)</span></label>
           <textarea className="input" rows={2} style={{ resize:'vertical' }}
             placeholder="เช่น คืนได้ภายใน 30 วัน, สินค้าไม่เปิดซอง, แจ้ง Rep ก่อน..."
             value={form.returnPolicy||''} onChange={e=>set('returnPolicy',e.target.value)} />
         </div>
         <div className="form-group">
-          <label className="label">↩ Return Policy (EN)</label>
+          <label className="label">↩ Return Policy (EN)<span style={{color:'var(--txt3)',fontWeight:400,fontSize:'0.88em'}}> · นโยบายการรับคืน (EN)</span></label>
           <textarea className="input" rows={2} style={{ resize:'vertical' }}
             placeholder="e.g., Returns within 30 days, unopened only, notify rep first..."
             value={form.returnPolicyEN||''} onChange={e=>set('returnPolicyEN',e.target.value)} />
@@ -5098,7 +5125,7 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
 
       {/* ── Reps / Brand section (Tab + Table design) ── */}
       <div className="divider" />
-      <label className="label" style={{ marginBottom:10 }}>👥 {L('ผู้แทน / Brand','Sales Reps / Brand')}</label>
+      <label className="label" style={{ marginBottom:10 }}>👥 ผู้แทน / Brand · Sales Reps / Brand</label>
 
       {/* Rep tab strip */}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
@@ -5324,9 +5351,9 @@ function SupplierForm({ sup, lang, L, drugs: allDrugs = [], suppliers = [], onSa
       <div className="divider" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <label className="label" style={{ margin: 0 }}>
-          📦 {L('รายการสินค้าที่จำหน่าย', 'Products Catalog')}
+          📦 รายการสินค้าที่จำหน่าย · Products Catalog
           <span style={{ fontWeight: 400, color: 'var(--txt4)', fontSize: 11, marginLeft: 6 }}>
-            {L('(ใช้สำหรับเปรียบเทียบราคา)', '(used for price comparison)')}
+            (ใช้สำหรับเปรียบเทียบราคา · used for price comparison)
           </span>
         </label>
         <span style={{ fontSize: 11, color: 'var(--txt3)' }}>{drugList.length} {L('รายการ', 'items')}</span>
