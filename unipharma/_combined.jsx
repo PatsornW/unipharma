@@ -2688,8 +2688,8 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
                 <tr><td colSpan={10} className="no-data">{L('ไม่พบข้อมูล', 'No results found')}</td></tr>
               )}
               {pageData.map(d => {
-                const cat = UTILS.getCat(d.catId);
-                const sub = UTILS.getSub(d.catId, d.subId);
+                const cat = cats.find(c=>c.id===d.catId) || {name:d.catId||'',nameEN:d.catId||'',color:'#94a3b8',subs:[]};
+                const sub = (cat.subs||[]).find(s=>s.id===d.subId) || {name:d.subId||'',nameEN:d.subId||''};
                 const ss = stockStatus(d);
                 const isExpanded = expandedCode === d.code;
                 return (
