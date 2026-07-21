@@ -160,7 +160,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
     const map = {};
     data.forEach(r => { map[r.code] = r; });
     setCwStock(map);
-    setCwSyncedAt(data[0].synced_at);
+    setCwSyncedAt(data.reduce((m, r) => (r.synced_at || '') > m ? (r.synced_at || '') : m, ''));
   };
 
   useEffect(() => {
@@ -171,7 +171,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       const map = {};
       data.forEach(r => { map[r.code] = r; });
       setCwStock(map);
-      setCwSyncedAt(data[0].synced_at);
+      setCwSyncedAt(data.reduce((m, r) => (r.synced_at || '') > m ? (r.synced_at || '') : m, ''));
 
       if (cwAutoSynced.current) return;
       cwAutoSynced.current = true;
