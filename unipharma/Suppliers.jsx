@@ -157,6 +157,13 @@ function SuppliersPage({ lang, L, suppliers, setSuppliers, drugs, setDrugs, orde
                   <span style={{ color: 'var(--txt4)', marginRight: 4 }}>↩</span>{lang==='en' ? (sup.returnPolicyEN || sup.returnPolicy) : (sup.returnPolicy || sup.returnPolicyEN)}
                 </div>
               )}
+              {(sup.drugs?.length > 0) && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'var(--card2)', borderRadius: 6 }}>
+                  <span style={{ fontSize: 13 }}>📦</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--txt2)' }}>{sup.drugs.length.toLocaleString()} {L('รายการสินค้า', 'Products')}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, background: 'var(--ok-bg)', color: 'var(--ok)', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>{L('ใหม่', 'New')}</span>
+                </div>
+              )}
             </div>
           );
         })}
