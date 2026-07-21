@@ -285,6 +285,7 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
   const [sqlSub, setSqlSub] = useState('export');
   const [sqlOutput, setSqlOutput] = useState('');
   const [sqlRunning, setSqlRunning] = useState(false);
+  const [protectNames, setProtectNames] = useState(true);
   const [sqlExportType, setSqlExportType] = useState('drugs');
   const [sqlQuery, setSqlQuery] = useState('SELECT code, name_th, name_en, cost_ex, sell_ex, total_stock\nFROM drugs\nLIMIT 20;');
   const [sqlResults, setSqlResults] = useState(null);
@@ -361,15 +362,30 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
     if (!preview) return;
     const source = tab==='sheets' ? 'Google Sheets' : 'File Upload';
     if (sheetType==='drugs') {
+      // Merge preview into existing drugs; when protectNames=true keep existing name/cat/supplier
+      const existingMap = Object.fromEntries(drugs.map(d=>[d.code,d]));
+      const toSave = preview.map(d => {
+        const ex = existingMap[d.code];
+        if (protectNames && ex) {
+          return { ...d,
+            nameTH:     ex.nameTH     || d.nameTH,
+            nameEN:     ex.nameEN     || d.nameEN,
+            catId:      ex.catId      || d.catId,
+            subId:      ex.subId      || d.subId,
+            supplierId: ex.supplierId || d.supplierId,
+          };
+        }
+        return d;
+      });
       setDrugs(prev => {
         const map = Object.fromEntries(prev.map(d=>[d.code,d]));
-        preview.forEach(d => { map[d.code] = d; });
+        toSave.forEach(d => { map[d.code] = d; });
         return Object.values(map);
       });
       // Auto-link each drug to its primary supplier's drugs[] array
       setSuppliers(prev => {
         const supMap = Object.fromEntries(prev.map(s=>[s.id,{...s,drugs:[...(s.drugs||[])]}]));
-        preview.forEach(d => {
+        toSave.forEach(d => {
           if (d.supplierId && supMap[d.supplierId] && !supMap[d.supplierId].drugs.includes(d.code))
             supMap[d.supplierId].drugs.push(d.code);
         });
@@ -379,8 +395,8 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
       });
       addHistory(source, L('ฐานข้อมูลยา','Drug DB'), preview.length);
       if (window.UNI_DB && window.UNI_DB.enabled) {
-        window.UNI_DB.saveDrugsBulk(preview)
-          .then(() => { window.UNI_DB.logSync(source, 'drugs', preview.length); notify(L('อัปโหลดขึ้นคลาวด์แล้ว','Pushed to cloud')); })
+        window.UNI_DB.saveDrugsBulk(toSave)
+          .then(() => { window.UNI_DB.logSync(source, 'drugs', toSave.length); notify(L('อัปโหลดขึ้นคลาวด์แล้ว','Pushed to cloud')); })
           .catch(() => notify(L('อัปโหลดคลาวด์ไม่สำเร็จ','Cloud upload failed'), 'err'));
       }
       notify(L(`นำเข้ายา ${preview.length} รายการสำเร็จ`, `Imported ${preview.length} drugs successfully`));
@@ -414,7 +430,15 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
         lines.push(
           `INSERT INTO drugs (code,name_th,name_en,cat_id,sub_id,supplier_id,has_vat,cost_ex,sell_ex,total_stock,data) VALUES ` +
           `('${sqlEsc(d.code)}','${sqlEsc(d.nameTH)}','${sqlEsc(d.nameEN)}','${sqlEsc(d.catId||'')}','${sqlEsc(d.subId||'')}','${sqlEsc(d.supplierId||'')}',${!!d.hasVat},${d.costEx||0},${d.sellEx||0},${d.totalStock||0},'${sqlEsc(JSON.stringify(d))}'::jsonb) ` +
-          `ON CONFLICT (code) DO UPDATE SET name_th=EXCLUDED.name_th,name_en=EXCLUDED.name_en,cat_id=EXCLUDED.cat_id,cost_ex=EXCLUDED.cost_ex,sell_ex=EXCLUDED.sell_ex,total_stock=EXCLUDED.total_stock,data=EXCLUDED.data;`
+          (protectNames
+            ? `ON CONFLICT (code) DO UPDATE SET cost_ex=EXCLUDED.cost_ex,sell_ex=EXCLUDED.sell_ex,has_vat=EXCLUDED.has_vat,total_stock=EXCLUDED.total_stock,` +
+              `name_th=CASE WHEN drugs.name_th IS NOT NULL AND drugs.name_th<>'' THEN drugs.name_th ELSE EXCLUDED.name_th END,` +
+              `name_en=CASE WHEN drugs.name_en IS NOT NULL AND drugs.name_en<>'' THEN drugs.name_en ELSE EXCLUDED.name_en END,` +
+              `cat_id=CASE WHEN drugs.cat_id IS NOT NULL AND drugs.cat_id<>'' THEN drugs.cat_id ELSE EXCLUDED.cat_id END,` +
+              `supplier_id=CASE WHEN drugs.supplier_id IS NOT NULL AND drugs.supplier_id<>'' THEN drugs.supplier_id ELSE EXCLUDED.supplier_id END,` +
+              `data=drugs.data||jsonb_build_object('costEx',(EXCLUDED.data->>'costEx')::numeric,'sellEx',(EXCLUDED.data->>'sellEx')::numeric,'hasVat',(EXCLUDED.data->>'hasVat')='true','totalStock',(EXCLUDED.data->>'totalStock')::numeric,'minStock',(EXCLUDED.data->>'minStock')::numeric);`
+            : `ON CONFLICT (code) DO UPDATE SET name_th=EXCLUDED.name_th,name_en=EXCLUDED.name_en,cat_id=EXCLUDED.cat_id,cost_ex=EXCLUDED.cost_ex,sell_ex=EXCLUDED.sell_ex,total_stock=EXCLUDED.total_stock,data=EXCLUDED.data;`
+          )
         );
       });
     } else {
@@ -846,6 +870,18 @@ LIMIT 20;`,
               </table>
             </div>
           </div>
+          {sheetType==='drugs' && (
+            <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 14px',background:'var(--warn-bg,#fffbe6)',border:'1px solid var(--warn,#f0b429)',borderRadius:'var(--r,6px)',marginBottom:10}}>
+              <input type="checkbox" id="protect-names-cb" checked={protectNames} onChange={e=>setProtectNames(e.target.checked)} style={{marginTop:3,cursor:'pointer',flexShrink:0}} />
+              <label htmlFor="protect-names-cb" style={{cursor:'pointer',fontSize:13,lineHeight:1.5}}>
+                <b>🔒 {L('ป้องกันชื่อยา / หมวดหมู่ถูกเขียนทับ · Protect names & categories')}</b>
+                <span style={{display:'block',fontSize:11,color:'var(--txt3)',marginTop:2}}>
+                  {L('ถ้ายามีชื่อหรือหมวดหมู่อยู่แล้ว จะ import เฉพาะราคา / สต็อก — ปิดถ้าต้องการให้ Excel เขียนทับทั้งหมด',
+                     'Existing names & categories are kept — only price/stock are updated. Uncheck to let Excel overwrite everything.')}
+                </span>
+              </label>
+            </div>
+          )}
           <div style={{display:'flex',gap:10}}>
             <button className="btn btn-ghost" onClick={()=>setStep(2)}>{L('← แก้ Mapping','← Fix Mapping')}</button>
             {perm.role === 'admin'
