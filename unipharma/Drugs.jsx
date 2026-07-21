@@ -409,32 +409,10 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
           </button>
         ))}
       </div>
-      </div>
 
-      {/* UNUSED DRUGS PANEL */}
-      {activeTab === 'unused' && (
-        <div className="card" style={{padding:16}}>
-          <UnusedDrugsPanel lang={lang} L={L} drugs={drugs} onEdit={d=>{setEditDrug(d);setShowAdd(false);}} />
-        </div>
-      )}
-
-      {activeTab === 'all' && <>
-
-      {/* Packaging info banner */}
-      {showPkg && (
-        <div style={{ background:'linear-gradient(135deg,var(--acc) 0%,var(--acc2) 100%)', borderRadius:'var(--r)', padding:'12px 16px', marginBottom:14, display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:24 }}>📦</span>
-          <div style={{ flex:1, color:'#fff' }}>
-            <div style={{ fontWeight:700, fontSize:13 }}>{L('โหมดแสดงหน่วยบรรจุ (Preview)','Packaging Units Preview Mode')}</div>
-            <div style={{ fontSize:12, opacity:.85 }}>{L('คลิกแถวยาใดก็ได้เพื่อดูหน่วยบรรจุเต็ม · เช่น 1 กล่อง = 3 แผง = 30 เม็ด · ตัวเลขสามารถปรับได้ในหน้าแก้ไขยา',
-              'Click any row to see full packaging chain · e.g. 1 Box = 3 Strips = 30 Tablets · Values editable in the Edit screen')}</div>
-          </div>
-          <button className="btn btn-ghost btn-sm" style={{ color:'#fff', borderColor:'rgba(255,255,255,.4)' }} onClick={()=>setShowPkg(false)}>× {L('ปิด','Close')}</button>
-        </div>
-      )}
-
-      {/* FILTERS */}
-      <div className="card" style={{ marginBottom: 16, padding: 14 }}>
+      {/* FILTERS — sticky */}
+      {activeTab === 'all' && (
+      <div className="card" style={{ marginTop:10, marginBottom:0, padding:14 }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ flex: '1 1 220px' }}>
             <label className="label">{L('ค้นหา', 'Search')}</label>
@@ -489,6 +467,30 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
           )}
         </div>
       </div>
+      )}
+      </div>
+
+      {/* UNUSED DRUGS PANEL */}
+      {activeTab === 'unused' && (
+        <div className="card" style={{padding:16}}>
+          <UnusedDrugsPanel lang={lang} L={L} drugs={drugs} onEdit={d=>{setEditDrug(d);setShowAdd(false);}} />
+        </div>
+      )}
+
+      {activeTab === 'all' && <>
+
+      {/* Packaging info banner */}
+      {showPkg && (
+        <div style={{ background:'linear-gradient(135deg,var(--acc) 0%,var(--acc2) 100%)', borderRadius:'var(--r)', padding:'12px 16px', marginBottom:14, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:24 }}>📦</span>
+          <div style={{ flex:1, color:'#fff' }}>
+            <div style={{ fontWeight:700, fontSize:13 }}>{L('โหมดแสดงหน่วยบรรจุ (Preview)','Packaging Units Preview Mode')}</div>
+            <div style={{ fontSize:12, opacity:.85 }}>{L('คลิกแถวยาใดก็ได้เพื่อดูหน่วยบรรจุเต็ม · เช่น 1 กล่อง = 3 แผง = 30 เม็ด · ตัวเลขสามารถปรับได้ในหน้าแก้ไขยา',
+              'Click any row to see full packaging chain · e.g. 1 Box = 3 Strips = 30 Tablets · Values editable in the Edit screen')}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" style={{ color:'#fff', borderColor:'rgba(255,255,255,.4)' }} onClick={()=>setShowPkg(false)}>× {L('ปิด','Close')}</button>
+        </div>
+      )}
 
       {/* TABLE */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
