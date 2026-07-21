@@ -38,8 +38,11 @@ SUPABASE_KEY = os.environ['SUPABASE_KEY']
 TABLE         = 'cwpharma_stock_test'
 HISTORY_TABLE = 'cw_price_history'
 
-# Fixed fiscal start date — pull all data from 19/07/2022 to today
-SALE_FROM        = '19/07/2022'
+# Fiscal start date: 19/07/2022 — but cap at 2 years rolling so the CW
+# BrnSale report does not time out as historical data grows.
+_FISCAL_START  = date(2022, 7, 19)
+_TWO_YEARS_AGO = date.today() - timedelta(days=730)
+SALE_FROM        = max(_FISCAL_START, _TWO_YEARS_AGO).strftime("%d/%m/%Y")
 SALE_TO          = date.today().strftime("%d/%m/%Y")
 EXPORT_BTN       = '#ctl00_MainContent_ReportViewer1_ctl05_ctl04_ctl00_ButtonLink'
 STOCK_PARTS      = 2
