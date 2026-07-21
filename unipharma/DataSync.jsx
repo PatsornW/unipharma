@@ -354,6 +354,15 @@ function DataSyncPage({ lang, L, drugs, setDrugs, suppliers, setSuppliers, notif
     if (!rawRows || !colMap) return;
     const cats = DB.CATEGORIES;
     const parsed = sheetType==='drugs' ? parseDrugs(rawRows, colMap, cats) : parseSuppliers(rawRows, colMap);
+    // Flag suspected code reassignments: same code, but nameTH changed
+    if (sheetType === 'drugs') {
+      const existingMap = Object.fromEntries(drugs.map(d=>[d.code,d]));
+      parsed.forEach(d => {
+        const ex = existingMap[d.code];
+        if (ex && ex.nameTH && d.nameTH && ex.nameTH.trim() !== d.nameTH.trim())
+          d._prevName = ex.nameTH;
+      });
+    }
     setPreview(parsed); setStep(3);
   };
 
@@ -834,6 +843,32 @@ LIMIT 20;`,
                  'Click "Import" to save — will merge with existing data, existing records not deleted')}
             </div>
           </div>
+          {sheetType==='drugs' && (() => {
+            const changed = preview.filter(d=>d._prevName);
+            if (!changed.length) return null;
+            return (
+              <div className="card" style={{marginBottom:16,borderColor:'rgba(234,88,12,.4)',background:'var(--warn-bg,#fffbe6)'}}>
+                <div style={{fontWeight:700,fontSize:14,color:'var(--warn,#d97706)'}}>
+                  ⚠️ {changed.length} {L('รายการ: รหัสเดิม แต่ชื่อเปลี่ยน — อาจถูก Reassign',
+                      'items: same code but name changed — possible CW code reassignment')}
+                </div>
+                <div style={{fontSize:12,color:'var(--txt3)',marginTop:4,marginBottom:8}}>
+                  {L('ตรวจสอบรายการด้านล่างก่อน import — ถ้าต้องการเก็บชื่อเดิมไว้ ให้ติ๊ก 🔒 ป้องกันชื่อ/หมวดหมู่',
+                     'Review these items before importing — tick 🔒 Protect names to keep existing names')}
+                </div>
+                <div style={{maxHeight:180,overflow:'auto',fontSize:12}}>
+                  {changed.map(d=>(
+                    <div key={d.code} style={{display:'flex',gap:8,padding:'4px 0',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
+                      <span style={{fontFamily:'monospace',color:'var(--acc2)',minWidth:80}}>{d.code}</span>
+                      <span style={{color:'var(--txt3)'}}>{d._prevName}</span>
+                      <span style={{color:'var(--txt3)'}}>→</span>
+                      <span style={{color:'var(--err)',fontWeight:600}}>{d.nameTH}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <div className="card" style={{padding:0,overflow:'hidden',marginBottom:16}}>
             <div className="tbl-wrap" style={{border:'none',maxHeight:300}}>
               <table>
@@ -846,11 +881,14 @@ LIMIT 20;`,
                 </thead>
                 <tbody>
                   {preview.slice(0,30).map((item,i)=>(
-                    <tr key={i}>
+                    <tr key={i} style={item._prevName ? {background:'rgba(234,88,12,.07)'} : {}}>
                       <td style={{color:'var(--txt3)',fontSize:11}}>{i+1}</td>
                       {sheetType==='drugs'?<>
                         <td style={{fontFamily:'monospace',fontSize:11,color:'var(--acc2)'}}>{item.code}</td>
-                        <td style={{fontSize:12}}>{item.nameTH}</td>
+                        <td style={{fontSize:12}}>
+                          {item._prevName && <span style={{display:'block',fontSize:10,color:'var(--txt3)',textDecoration:'line-through'}}>{item._prevName}</span>}
+                          <span style={item._prevName ? {color:'var(--err)',fontWeight:600} : {}}>{item.nameTH}</span>
+                        </td>
                         <td style={{fontSize:11,color:'var(--txt3)'}}>{item.unit}</td>
                         <td style={{fontSize:11}}>{item.catId}</td>
                         <td style={{textAlign:'right',fontSize:12}}>{UTILS.fmt(item.costEx)}</td>
