@@ -81,7 +81,9 @@ const UTILS = (() => {
   }
 
   // Category helpers
-  function getCat(id){ return DB.CATEGORIES.find(c=>c.id===id)||{name:id,nameEN:id,color:'#94a3b8',subs:[]}; }
+  let _runtimeCategories = [];
+  function setRuntimeCategories(arr){ _runtimeCategories = arr || []; }
+  function getCat(id){ return _runtimeCategories.find(c=>c.id===id)||DB.CATEGORIES.find(c=>c.id===id)||{name:id,nameEN:id,color:'#94a3b8',subs:[]}; }
   function getSub(catId,subId){ const c=getCat(catId); return c.subs.find(s=>s.id===subId)||{name:subId,nameEN:subId}; }
   function getBranch(id){ return DB.BRANCHES.find(b=>b.id===id)||{name:id,nameEN:id,code:'??'}; }
   let _runtimeSuppliers = [];
@@ -208,6 +210,6 @@ const UTILS = (() => {
   }
 
   return {fmt,fmtDate,fmtDateISO,numToThaiWords,generatePONumber,statusLabel,statusColor,stars,debounce,
-          getCat,getSub,getBranch,getSupplier,setRuntimeSuppliers,getDrug,calcPOSummary,getLowStock,monthlyTotals,
+          getCat,getSub,getBranch,getSupplier,setRuntimeSuppliers,setRuntimeCategories,getDrug,calcPOSummary,getLowStock,monthlyTotals,
           getUnit,getSupCat,getBranchName,getPackaging};
 })();
