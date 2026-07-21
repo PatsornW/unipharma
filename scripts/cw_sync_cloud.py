@@ -230,10 +230,8 @@ def download_gr_report(page, cw_url=None, dl_dir=None, label='gr'):
     try:
         inputs = [i for i in page.query_selector_all('input[type=text]') if i.is_visible()]
         if len(inputs) >= 2:
-            inputs[0].triple_click()
-            inputs[0].type(SALE_FROM, delay=30)
-            inputs[1].triple_click()
-            inputs[1].type(SALE_TO, delay=30)
+            inputs[0].fill(SALE_FROM)   # fill() clears + sets; triple_click not on ElementHandle
+            inputs[1].fill(SALE_TO)
             print(f'[GR] Date range: {SALE_FROM} – {SALE_TO}')
     except Exception as e:
         print(f'[GR] Date fill warning: {e}')
@@ -801,6 +799,11 @@ if __name__ == "__main__":
             print(f"Sale files  : {[os.path.basename(f) for f in sale_files]}")
 
             products = sync_supabase()
+            if not products:
+                raise Exception(
+                    "BrnStock download returned 0 files — stock data missing. "
+                    "Check brnstock_part1_debug.png in artifacts for CW server screenshot."
+                )
 
             # ── GR ทุนรับหลังสุด — PTN branch (cost_00) from primary CW ──────────
             print("\n[4b] GR report — PTN (cost_00)...")
