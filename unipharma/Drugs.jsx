@@ -401,7 +401,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
           {key:'unused',label:L('ยังไม่มี PO','No PO Yet'),   icon:'📋'},
         ].map(({key,label,icon})=>(
           <button key={key} onClick={()=>setActiveTab(key)}
-            style={{padding:'8px 18px',border:'none',background:'none',cursor:'pointer',fontWeight:activeTab===key?700:400,
+            style={{padding:'6px 14px',border:'none',background:'none',cursor:'pointer',fontWeight:activeTab===key?700:400,
               color:activeTab===key?'var(--acc2)':'var(--txt3)',
               borderBottom:activeTab===key?'2px solid var(--acc2)':'2px solid transparent',
               marginBottom:-2,fontSize:13}}>
@@ -412,57 +412,50 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
 
       {/* FILTERS — sticky */}
       {activeTab === 'all' && (
-      <div className="card" style={{ marginTop:10, marginBottom:0, padding:14 }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div className="card" style={{ marginTop:6, marginBottom:0, padding:'7px 12px' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: '1 1 220px' }}>
-            <label className="label">{L('ค้นหา', 'Search')}</label>
             <SearchInput value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder={L('รหัส / ชื่อยา…', 'Code / Drug name…')} />
           </div>
-          <div style={{ flex: '0 0 180px' }}>
-            <label className="label">{L('หมวดหมู่หลัก', 'Main Category')}</label>
+          <div style={{ flex: '0 0 170px' }}>
             <select className="input" value={catFilter} onChange={e => { setCatFilter(e.target.value); setSubFilter(''); setPage(1); }}>
-              <option value="">{L('ทั้งหมด', 'All Categories')}</option>
+              <option value="">{L('หมวดหมู่: ทั้งหมด', 'Category: All')}</option>
               {cats.map(c => <option key={c.id} value={c.id}>{lang === 'th' ? c.name : c.nameEN}</option>)}
             </select>
           </div>
           {selectedCat && (
-            <div style={{ flex: '0 0 180px' }}>
-              <label className="label">{L('หมวดหมู่รอง', 'Sub Category')}</label>
+            <div style={{ flex: '0 0 160px' }}>
               <select className="input" value={subFilter} onChange={e => { setSubFilter(e.target.value); setPage(1); }}>
-                <option value="">{L('ทั้งหมด', 'All')}</option>
+                <option value="">{L('หมวดย่อย: ทั้งหมด', 'Sub: All')}</option>
                 {selectedCat.subs.map(s => <option key={s.id} value={s.id}>{lang === 'th' ? s.name : s.nameEN}</option>)}
               </select>
             </div>
           )}
-          <div style={{ flex: '0 0 auto' }}>
-            <label className="label">{L('สาขา', 'Branch')}</label>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {[{ id: '', name: 'ทุกสาขา', nameEN: 'All', color: 'var(--acc)' }, ...DB.BRANCHES].map(b => (
-                <button key={b.id}
-                  className={`btn btn-sm ${branchFilter === b.id ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => { setBranchFilter(b.id); setPage(1); }}
-                  style={{ whiteSpace: 'nowrap' }}>
-                  <span style={{ color: branchFilter === b.id ? '' : b.color, fontWeight: 700 }}>
-                    {lang === 'th' ? b.name : b.nameEN}
-                  </span>
-                  <span style={{ marginLeft: 5, fontSize: 11, opacity: .75 }}>
-                    {(branchCounts[b.id] ?? 0).toLocaleString()}
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div style={{ flex: '0 0 auto', display:'flex', gap:4, flexWrap:'wrap', alignItems:'center' }}>
+            {[{ id: '', name: 'ทุกสาขา', nameEN: 'All', color: 'var(--acc)' }, ...DB.BRANCHES].map(b => (
+              <button key={b.id}
+                className={`btn btn-sm ${branchFilter === b.id ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => { setBranchFilter(b.id); setPage(1); }}
+                style={{ whiteSpace: 'nowrap' }}>
+                <span style={{ color: branchFilter === b.id ? '' : b.color, fontWeight: 700 }}>
+                  {lang === 'th' ? b.name : b.nameEN}
+                </span>
+                <span style={{ marginLeft: 5, fontSize: 11, opacity: .75 }}>
+                  {(branchCounts[b.id] ?? 0).toLocaleString()}
+                </span>
+              </button>
+            ))}
           </div>
-          <div style={{ flex: '0 0 140px' }}>
-            <label className="label">VAT</label>
+          <div style={{ flex: '0 0 130px' }}>
             <select className="input" value={vatFilter} onChange={e => { setVatFilter(e.target.value); setPage(1); }}>
-              <option value="all">{L('ทั้งหมด', 'All')}</option>
+              <option value="all">{L('VAT: ทั้งหมด', 'VAT: All')}</option>
               <option value="vat">{L('มี VAT', 'With VAT')}</option>
               <option value="novat">{L('ไม่มี VAT', 'No VAT')}</option>
             </select>
           </div>
           {(search || catFilter || subFilter || vatFilter !== 'all' || branchFilter) && (
-            <button className="btn btn-ghost" style={{ marginTop: 18 }} onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setBranchFilter(''); setPage(1); }}>
-              ✕ {L('ล้างตัวกรอง', 'Clear')}
+            <button className="btn btn-ghost" onClick={() => { setSearch(''); setCatFilter(''); setSubFilter(''); setVatFilter('all'); setBranchFilter(''); setPage(1); }}>
+              ✕ {L('ล้าง', 'Clear')}
             </button>
           )}
         </div>
