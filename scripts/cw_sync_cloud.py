@@ -858,7 +858,7 @@ def ensure_supabase_functions():
         project_ref = SUPABASE_URL.split('//')[1].split('.')[0]
         conn = psycopg2.connect(
             host=f'aws-0-ap-southeast-1.pooler.supabase.com',
-            port=6543,
+            port=5432,   # session mode — required for NOTIFY pgrst to be delivered
             dbname='postgres',
             user=f'postgres.{project_ref}',
             password=SUPABASE_KEY,
