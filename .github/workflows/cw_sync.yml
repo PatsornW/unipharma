@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python packages
-        run: pip install playwright pandas requests openpyxl
+        run: pip install playwright pandas requests openpyxl psycopg2-binary
 
       - name: Install Playwright browsers + system deps
         run: playwright install chromium --with-deps

@@ -769,6 +769,59 @@ def sync_supabase(products=None):
     return products
 
 
+# ── SETUP: ensure sync_cw_stock_to_drugs() exists in Supabase ────────────────
+
+SYNC_FUNCTION_SQL = """
+CREATE OR REPLACE FUNCTION sync_cw_stock_to_drugs()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE n_rows int;
+BEGIN
+  UPDATE drugs d
+  SET
+    total_stock = COALESCE(c.stock_00,0) + COALESCE(c.stock_01,0) + COALESCE(c.stock_02,0),
+    data = d.data || jsonb_build_object(
+      'stock',      jsonb_build_object(
+                      'PTN', COALESCE(c.stock_00,0),
+                      'RAM', COALESCE(c.stock_01,0),
+                      'CNX', COALESCE(c.stock_02,0)
+                    ),
+      'totalStock', COALESCE(c.stock_00,0) + COALESCE(c.stock_01,0) + COALESCE(c.stock_02,0)
+    )
+  FROM cwpharma_stock_test c
+  WHERE c.code = d.code;
+  GET DIAGNOSTICS n_rows = ROW_COUNT;
+  RETURN json_build_object('updated', n_rows, 'synced_at', now()::text);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION sync_cw_stock_to_drugs() TO anon;
+"""
+
+def ensure_supabase_functions():
+    """Create sync_cw_stock_to_drugs() via Supabase pooler (uses SUPABASE_KEY as password)."""
+    try:
+        import psycopg2
+        project_ref = SUPABASE_URL.split('//')[1].split('.')[0]
+        conn = psycopg2.connect(
+            host=f'aws-0-ap-southeast-1.pooler.supabase.com',
+            port=6543,
+            dbname='postgres',
+            user=f'postgres.{project_ref}',
+            password=SUPABASE_KEY,
+            connect_timeout=15,
+        )
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(SYNC_FUNCTION_SQL)
+        cur.close(); conn.close()
+        print('[Setup] sync_cw_stock_to_drugs() created/updated ✓')
+    except Exception as e:
+        print(f'[Setup] Could not create function (non-fatal): {e}')
+
+
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -781,6 +834,8 @@ if __name__ == "__main__":
         print(f"CNX branch URL  : {CW_URL_CNX}")
         os.makedirs(DOWNLOAD_DIR_CNX, exist_ok=True)
     print()
+
+    ensure_supabase_functions()
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
