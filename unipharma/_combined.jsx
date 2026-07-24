@@ -7451,6 +7451,7 @@ Object.assign(window, { ReportsPage });
 
 /* ===== Help.jsx ===== */
 // Help.jsx — Dynamic User Guide (Update-friendly structure)
+const { useState } = React;
 
 function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCount = 0 }) {
   const [section, setSection] = useState('overview');
@@ -7484,14 +7485,14 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
       steps_th:['ดูการ์ด Supplier พร้อมยอดซื้อ คะแนน จำนวนดีล และ 📦 จำนวนยาที่ผูกไว้','คลิกการ์ดเพื่อดูรายการยา ประวัติ PO ดีล และผู้แทน','แก้ไขข้อมูล หรือเพิ่มผู้จัดจำหน่ายใหม่ — ฟอร์มมีฟิลด์: ชื่อ (ไทย/อังกฤษ), ผู้ติดต่อ, อีเมล, เลขผู้เสียภาษี, ที่อยู่ (ถนน/เมือง/จังหวัด/รหัสไปรษณีย์/ประเทศ), เงื่อนไขชำระ, วงเงินเครดิต, ระยะส่ง, คะแนน, ยอดขั้นต่ำ, หมายเหตุ','👤 ผู้แทน/Brand: กด "+ เพิ่มผู้แทน" เพื่อเพิ่มผู้แทน — คลิกแท็บชื่อผู้แทนด้านบนเพื่อสลับ; แก้ไข Brand (TH/EN) / ชื่อ / เบอร์โทร ได้ในแผงด้านล่าง; ผู้แทนหลายคนใช้เลือกตอนสร้าง PO','📦 สินค้าต่อผู้แทน: ค้นหายาในช่องค้นหาใต้แท็บ เลือกเพื่อเพิ่ม → แสดงเป็นตารางแบบแก้ไขได้ (ซื้อ/แถม/ส่วนลด%/หมายเหตุ); กดปุ่ม ↩ เพื่อกรอกนโยบายการคืนสินค้าต่อรายการ (เขียว = มีข้อมูล)','🎁 ดีล (Multi-tier): เพิ่มดีลหลายระดับในแถวขยายใต้สินค้าแต่ละรายการ — ระบุ ซื้อจำนวน / แถมจำนวน / ของแถม / ส่วนลด% / หมายเหตุดีล; ใช้ตอนสร้าง PO ได้ทันที','📤 Admin/Manager: Export Excel เพื่อดาวน์โหลดรายการผู้จัดจำหน่าย'],
       steps_en:['View supplier cards with spend, rating, deal count, and 📦 drug count badge','Click card to see drug list, PO history, deals, and reps','Edit info or add a new supplier — form fields: name (TH/EN), contact, email, tax ID, address (street/city/province/postal code/country), payment terms, credit limit, lead time, rating, min order, notes','👤 Sales Reps/Brand: tap "+ Add Rep" to create a rep — click the rep tab at the top to switch between reps; edit Brand (TH/EN) / name / phone in the panel below; multiple reps are selectable when creating a PO','📦 Products per Rep: search drugs in the search box below the tabs, select to add → shown as an inline-editable table (Buy/Free/Disc%/Note); tap ↩ button to add a return policy per drug (green = has data)','🎁 Deals (multi-tier): add multiple deal tiers in the expandable row below each drug — set Buy qty / Free qty / Bonus Items / Discount % / Deal Note; available immediately when creating a PO','📤 Admin/Manager: Export Excel to download the full supplier list'] },
     { icon:'⚖', th:'เปรียบเทียบราคา', en:'Price Comparison', color:'var(--err)',
-      steps_th:['ค้นหายาด้วยชื่อ/รหัส หรือคลิก Quick Search (ยาที่สั่งบ่อย) ด้านล่าง','ดูตารางราคาทุก Supplier เรียงจากถูกสุด — คอลัมน์ \"vs ถูกสุด\" แสดงส่วนต่าง','ระบบแนะนำ Supplier ที่คุ้มค่าที่สุด พร้อมราคาต้นทุนและกำไร%','ใช้เปรียบเทียบก่อนสร้าง PO เพื่อเลือกซื้อจากเจ้าที่ถูกที่สุด'],
-      steps_en:['Search by name/code or click Quick Search (frequent drugs) below','See all supplier prices sorted by cheapest — \"vs Cheapest\" column shows difference','System recommends best-value supplier with cost & profit%','Use before creating PO to pick the cheapest source'] },
+      steps_th:['ค้นหายาด้วยชื่อ/รหัส หรือคลิก Quick Search (ยาที่สั่งบ่อย) ด้านล่าง','แท็บ \"ราคาปัจจุบัน\": ดูตารางราคาทุก Supplier เรียงจากถูกสุด — มีคอลัมน์ EXP ดีล / ค่าส่ง / ราคารวม','🟣 แถว CW Pharma (สีม่วง): ดึงราคาต้นทุนจาก CW Pharma อัตโนมัติ เพื่อใช้เป็นราคาอ้างอิง (ไม่นับเป็น Supplier จริง)','แท็บ \"สรุปเปรียบเทียบ\": ดูการ์ดสรุป — ถูกสุด/แพงสุด/ประหยัด%, ตารางเปรียบเทียบ, คำแนะนำ, ปุ่มสร้าง PO','แท็บ \"ประวัติราคา\": ดูราคาที่เคยได้รับในอดีต','ระบบแนะนำ Supplier ที่คุ้มค่าที่สุด พร้อมราคาต้นทุนและกำไร% — ปุ่ม \"สร้าง PO\" ในแท็บสรุปเปิด PO พร้อมข้อมูล','ใช้เปรียบเทียบก่อนสร้าง PO เพื่อเลือกซื้อจากเจ้าที่ถูกที่สุด'],
+      steps_en:['Search by name/code or click Quick Search (frequent drugs) below','\"Current Prices\" tab: all supplier prices sorted cheapest first — columns include Deal EXP / Shipping / Total','🟣 CW Pharma row (purple): auto-pulled from CW Pharma as a reference price — not counted as a real supplier in rankings','\"Summary\" tab: summary cards (cheapest/most expensive/savings%), comparison table, recommendation, and Create PO button','\"Price History\" tab: view previously recorded prices over time','System recommends best-value supplier with cost & profit% — \"Create PO\" in summary tab opens a pre-filled PO','Use before creating PO to pick the cheapest source'] },
     { icon:'📦', th:'ติดตามสินค้า', en:'Stock Tracking', color:'#e5312a',
-      steps_th:['ดูสต็อกแยกสาขา (PTN/RAM/CNX) พร้อมแถบสี — แดง=ต่ำกว่า min, เหลือง=ใกล้หมด, เขียว=ปกติ','กรองดู \"ใกล้หมด\" หรือคลิกการ์ดสรุปด้านบนเพื่อกรองตามสถานะ','สต็อกอัปเดตจากระบบขายหน้าร้าน (CW Pharma) ผ่าน auto-sync ทุกวัน 10:00 + 18:00 อัตโนมัติ','ดูสต็อก CW แบบเรียลไทม์ในหน้า Drug Database → คอลัมน์ Stock CW (สีเขียว/เหลือง/แดง)','ยอดรวมมูลค่าสต็อกแสดงด้านบน แยกตามสาขา'],
-      steps_en:['View stock per branch (PTN/RAM/CNX) with colour bars — red=below min, yellow=low, green=ok','Filter by status or click summary cards at the top','Stock synced daily at 10:00 + 18:00 from POS (CW Pharma) via GitHub Actions — no manual update needed','Live CW stock also visible in Drug Database → Stock CW column (green/yellow/red pills)','Total stock value shown per branch at the top'] },
+      steps_th:['ดูสต็อกแยกสาขา (PTN/RAM/CNX) พร้อมแถบสี — แดง=ต่ำกว่า min, เหลือง=ใกล้หมด, เขียว=ปกติ','กรองดู \"ใกล้หมด\" หรือคลิกการ์ดสรุปด้านบนเพื่อกรองตามสถานะ','สต็อกอัปเดตจากระบบขายหน้าร้าน (CW Pharma) ผ่าน auto-sync ทุกคืน 02:00 น. อัตโนมัติ','ดูสต็อก CW แบบเรียลไทม์ในหน้า Drug Database → คอลัมน์ Stock CW (สีเขียว/เหลือง/แดง)','ยอดรวมมูลค่าสต็อกแสดงด้านบน แยกตามสาขา'],
+      steps_en:['View stock per branch (PTN/RAM/CNX) with colour bars — red=below min, yellow=low, green=ok','Filter by status or click summary cards at the top','Stock synced nightly at 02:00 from POS (CW Pharma) via GitHub Actions — no manual update needed','Live CW stock also visible in Drug Database → Stock CW column (green/yellow/red pills)','Total stock value shown per branch at the top'] },
     { icon:'📸', th:'สินค้าหมด', en:'Out of Stock', color:'#d97706',
-      steps_th:['แท็บ \"แจ้งสินค้าหมด\" (ทุก Role): เลือกยาจาก dropdown (พิมพ์ค้นหาได้) ระบุจำนวนคงเหลือ แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นแบบเรียลไทม์; หน้าอัปเดตอัตโนมัติทุก 60 วินาที หรือกดปุ่ม 🔄 รีเฟรชด้วยตนเอง','แท็บ \"รายการ/จัดการ\" (ทุก Role ดูได้, Admin/Manager แก้ไขได้): สรุปนับ 5 สถานะ — คลิกการ์ดเพื่อกรองรายการ','Admin/Manager (ฝ่ายจัดซื้อ) กด \"จัดการ\" เพื่อใส่: สถานะ / ETA / วันที่ผู้จัดจำหน่ายแจ้ง / หมายเหตุ / สินค้าทดแทน','แท็บ \"สถิติ/ประวัติ\" (ทุก Role): ดูรายการย้อนหลังแยกตามสัปดาห์ พร้อมสรุปสถานะ','📤 Admin/Manager: Export Excel เพื่อดาวน์โหลดรายการสินค้าหมดทั้งหมด'],
-      steps_en:['\"Report\" tab (all roles): select drug from searchable dropdown, enter remaining qty, attach photo + notes, then save','Syncs to cloud — everyone sees updates live; page auto-refreshes every 60 seconds, or tap 🔄 to refresh manually','\"List/Manage\" tab (all roles view; Admin/Manager edit): 5-status summary cards, click to filter list','Admin/Manager tap \"Manage\" to fill: Status / ETA / Supplier notify date / Notes / Replacement — Viewer can see all this','\"Statistics\" tab (all roles): view history grouped by week with status summaries','📤 Admin/Manager: Export Excel to download all out-of-stock records'] },
+      steps_th:['แท็บ \"แจ้งสินค้าหมด\" (ทุก Role): เลือกยาจาก dropdown (พิมพ์ค้นหาได้) ระบุจำนวนคงเหลือ แนบรูป + หมายเหตุ แล้วกดบันทึก','ข้อมูลแชร์ขึ้นคลาวด์ — ทุกคนเห็นแบบเรียลไทม์; หน้าอัปเดตอัตโนมัติทุก 60 วินาที หรือกดปุ่ม 🔄 รีเฟรชด้วยตนเอง','แท็บ \"รายการ/จัดการ\" (ทุก Role ดูได้, Admin/Manager แก้ไขได้): สรุปนับ 5 สถานะ — คลิกการ์ดเพื่อกรองรายการ','Admin/Manager (ฝ่ายจัดซื้อ) กด \"จัดการ\" เพื่อใส่: สถานะ / ETA / วันที่ผู้จัดจำหน่ายแจ้ง / หมายเหตุ / สินค้าทดแทน — Viewer ดูข้อมูลเหล่านี้ได้','แท็บ \"สถิติ/ประวัติ\" (ทุก Role): ดูรายการย้อนหลังแยกตามสัปดาห์ พร้อมสรุปสถานะ','📤 Admin/Manager: Export Excel เพื่อดาวน์โหลดรายการสินค้าหมดทั้งหมด','⚠️ ต้องรัน SQL migration ครั้งเดียว: DataSync → SQL Sync → Snippets → อัปเกรดตาราง out_of_stock'],
+      steps_en:['\"Report\" tab (all roles): select drug from searchable dropdown, enter remaining qty, attach photo + notes, then save','Syncs to cloud — everyone sees updates live; page auto-refreshes every 60 seconds, or tap 🔄 to refresh manually','\"List/Manage\" tab (all roles view; Admin/Manager edit): 5-status summary cards, click to filter list','Admin/Manager tap \"Manage\" to fill: Status / ETA / Supplier notify date / Notes / Replacement — Viewer can see all this','\"Statistics\" tab (all roles): view history grouped by week with status summaries','📤 Admin/Manager: Export Excel to download all out-of-stock records','⚠️ Run SQL migration once: DataSync → SQL Sync → Snippets → Upgrade out_of_stock table'] },
     { icon:'📊', th:'รายงาน', en:'Reports', color:'var(--acc)',
       steps_th:['เลือกเดือน + สาขา ด้วย filter ด้านบน (ดูรวมทุกสาขาหรือแยกสาขาได้)','กราฟแนวโน้มยอดซื้อ: เปรียบเทียบเดือนต่อเดือน แยกสาขา + แยกหมวดหมู่','แท็บ Top 10: ยาที่สั่งซื้อสูงสุด 10 อันดับ','แท็บ ยาที่ไม่ได้สั่ง: ตรวจสอบยาที่ขาดการสั่ง (ช่วยวางแผนสต็อก)','แท็บ Supplier Analysis: ยอดซื้อแยกตาม Supplier + เปรียบเทียบราคา'],
       steps_en:['Select month + branch with top filters (view all branches or per branch)','Trend chart: month-over-month spend by branch + by category','Top 10 tab: most-ordered drugs this period','Rarely Ordered tab: drugs not recently purchased (helps stock planning)','Supplier Analysis tab: spend per supplier + price comparison'] },
@@ -7663,6 +7664,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
                     {icon:'✅',text:L('จัดการผู้จัดจำหน่าย','Manage Suppliers')},
                     {icon:'✅',text:L('ซิงค์ข้อมูล (Import)','Data Sync/Import')},
                     {icon:'✅',text:L('ดูรายงาน','View Reports')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด + จัดการสถานะ (Out-of-Stock)','Report + Manage Out-of-Stock status')},
+                    {icon:'✅',text:L('ดูรายการ / สถิติ / ประวัติ Out-of-Stock','View OOS list, statistics & history')},
                   ]
                 },
                 {
@@ -7675,6 +7678,8 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
                     {icon:'✅',text:L('จัดการสินค้า','Manage Products')},
                     {icon:'✅',text:L('จัดการผู้จัดจำหน่าย','Manage Suppliers')},
                     {icon:'✅',text:L('ดูรายงาน','View Reports')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด + จัดการสถานะ (Out-of-Stock)','Report + Manage Out-of-Stock status')},
+                    {icon:'✅',text:L('ดูรายการ / สถิติ / ประวัติ Out-of-Stock','View OOS list, statistics & history')},
                     {icon:'❌',text:L('ลบข้อมูล','Delete Data')},
                     {icon:'❌',text:L('ซิงค์ข้อมูล','Data Sync')},
                   ]
@@ -7682,11 +7687,10 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
                 {
                   num:'3️⃣',
                   role:L('Viewer (ผู้ชมอย่างเดียว)','Viewer - Read-Only'),
-                  desc:L('เข้าถึงได้แค่ 2 หน้า: การสั่งซื้อ (ดูเท่านั้น) และ สินค้าหมด (ลงข้อมูลได้)','Access limited to 2 pages: Purchase Orders (view only) and Out of Stock (can submit)'),
+                  desc:L('เข้าถึงได้เฉพาะหน้า สินค้าหมด — แจ้งได้ + ดูสถานะการสั่งได้','Access limited to Out of Stock page only — can report and view ordering status'),
                   permissions:[
-                    {icon:'✅',text:L('ดู PO (อย่างเดียว)','View PO (only)')},
-                    {icon:'✅',text:L('แจ้งสินค้าหมด (ลงข้อมูล)','Report out-of-stock (submit)')},
-                    {icon:'❌',text:L('สร้าง/แก้ไข PO','Create/Edit PO')},
+                    {icon:'✅',text:L('แจ้งสินค้าหมด (ลงข้อมูล + ดูสถานะ)','Report out-of-stock (submit + view status)')},
+                    {icon:'❌',text:L('ดู/สร้าง/แก้ไข PO','View/Create/Edit PO')},
                     {icon:'❌',text:L('หน้าอื่น ๆ (ยา/ผู้จัดจำหน่าย/รายงาน ฯลฯ)','Other pages (drugs/suppliers/reports, etc.)')},
                     {icon:'❌',text:L('ลบข้อมูล / ซิงค์ข้อมูล','Delete / Data Sync')},
                   ]
@@ -7722,7 +7726,7 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
                 </thead>
                 <tbody>
                   {[
-                    {feat:L('ดู PO','View PO'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('ดู PO','View PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('สร้าง PO','Create PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('แก้ไข PO','Edit PO'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('ลบ PO','Delete PO'),a:'✅',m:'❌',v:'❌'},
@@ -7730,7 +7734,10 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
                     {feat:L('จัดการสินค้า','Manage Products'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('จัดการผู้จัดจำหน่าย','Manage Suppliers'),a:'✅',m:'✅',v:'❌'},
                     {feat:L('ซิงค์ข้อมูล','Data Sync'),a:'✅',m:'❌',v:'❌'},
-                    {feat:L('ดูรายงาน','View Reports'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('ดูรายงาน','View Reports'),a:'✅',m:'✅',v:'❌'},
+                    {feat:L('แจ้งสินค้าหมด','Report Out-of-Stock'),a:'✅',m:'✅',v:'✅'},
+                    {feat:L('จัดการสถานะ Out-of-Stock','Manage OOS Status'),a:'✅',m:'✅',v:'❌'},
+                    {feat:L('ดูรายการ/สถิติ Out-of-Stock','View OOS List & Stats'),a:'✅',m:'✅',v:'✅'},
                   ].map((row,i)=>(
                     <tr key={i} style={{borderBottom:`1px solid var(--bg3)`}}>
                       <td style={{padding:8}}>{row.feat}</td>
@@ -7826,7 +7833,6 @@ function HelpPage({ lang, L, perm = { role: 'admin' }, supplierCount = 0, drugCo
 }
 
 Object.assign(window, { HelpPage });
-
 
 /* ===== DataSync.jsx ===== */
 // DataSync.jsx — Multi-user Sync via Google Sheets + Excel Upload
