@@ -254,20 +254,13 @@
             drugs = drugsFromCache;
           }
         } else {
-          // Drug cache miss — run startup SQL first if configured
-          var startupSql = '';
-          try { startupSql = (localStorage.getItem('uni_startup_sql') || '').trim(); } catch(e) {}
-          if (startupSql) {
-            try {
-              var sr = await client.rpc('exec_sql', { sql: startupSql });
-              var sqlStatus = sr.error ? ('error: ' + (sr.error.message || sr.error)) : 'ok';
-              try { localStorage.setItem('uni_startup_sql_last_run', new Date().toISOString()); localStorage.setItem('uni_startup_sql_last_status', sqlStatus); } catch(e) {}
-              if (sr.error) console.warn('[UNI_DB] Startup SQL error:', sr.error);
-              else console.info('[UNI_DB] Startup SQL executed OK');
-            } catch(e) {
-              try { localStorage.setItem('uni_startup_sql_last_status', 'error: ' + (e.message || String(e))); } catch(_) {}
-              console.warn('[UNI_DB] Startup SQL failed (continuing):', e);
-            }
+          // Drug cache miss — sync latest CW stock into drugs table before fetching
+          try {
+            var sr = await client.rpc('sync_cw_stock_to_drugs');
+            if (sr.error) console.warn('[UNI_DB] CW stock sync:', sr.error.message || sr.error);
+            else console.info('[UNI_DB] CW stock synced:', (sr.data || {}).updated, 'drugs updated');
+          } catch(e) {
+            console.warn('[UNI_DB] CW stock sync skipped:', e.message);
           }
 
           var fetchJobs = [selectAll("drugs")];
