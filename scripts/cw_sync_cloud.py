@@ -798,6 +798,7 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION sync_cw_stock_to_drugs() TO anon;
+NOTIFY pgrst, 'reload schema';
 """
 
 def ensure_supabase_functions():
