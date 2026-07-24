@@ -555,9 +555,6 @@ def parse_stock(files):
                 raw = str(prod).strip()
                 code, name = raw.split(':', 1) if ':' in raw else (raw, raw)
                 name = name.strip()
-                if '*' in name:   # controlled drug (ยาควบคุม) — skip product + sub-rows
-                    current = None
-                    continue
                 current = code.strip()
 
                 # cols 3–5 sit between branch(2) and unit(6): try col3=last_cost, col4=last_sell
