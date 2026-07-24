@@ -236,6 +236,17 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
       });
   }, [expandedCode]);
 
+  // Keep --sticky-bar-h in sync so table max-height fills remaining viewport
+  useEffect(() => {
+    const bar = document.querySelector('.sticky-bar');
+    if (!bar) return;
+    const update = () => document.documentElement.style.setProperty('--sticky-bar-h', bar.offsetHeight + 'px');
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
+
   // Count items available per branch (stock > 0)
   const branchCounts = useMemo(() => {
     const counts = { '': drugs.length };
@@ -487,7 +498,7 @@ function DrugsPage({ lang, L, drugs, setDrugs, suppliers, categories, setCategor
 
       {/* TABLE */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="tbl-wrap" style={{ border: 'none' }}>
+        <div className="tbl-wrap tbl-sticky" style={{ border: 'none', overflowY: 'auto', maxHeight: 'calc(100vh - 60px - var(--sticky-bar-h, 165px) - 80px)' }}>
           <table>
             <thead>
               <tr>
